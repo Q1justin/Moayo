@@ -1,5 +1,5 @@
 
-# Moayo (모아)
+# Moayo (모아요)
 
 *Collect your financial life, one transaction at a time*
 
