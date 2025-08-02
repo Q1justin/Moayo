@@ -29,25 +29,50 @@ Record and categorize your earnings:
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v14 or higher)
+- Node.js (v16 or higher)
 - npm or yarn
+- React Native development environment
+- For iOS: Xcode (macOS only)
+- For Android: Android Studio
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Moayo.git
+git clone https://github.com/Q1justin/Moayo.git
 cd Moayo
 ```
 
 2. Install dependencies:
 ```bash
 npm install
+# or
+yarn install
 ```
 
-3. Start the development server:
+3. For iOS (macOS only):
+```bash
+cd ios && pod install && cd ..
+```
+
+4. Start the Metro bundler:
 ```bash
 npm start
+# or
+yarn start
+```
+
+5. Run the app:
+```bash
+# For iOS
+npm run ios
+# or
+yarn ios
+
+# For Android
+npm run android
+# or
+yarn android
 ```
 
 ## Usage
@@ -59,9 +84,12 @@ npm start
 
 ## Technology Stack
 
-- **Frontend**: [To be determined]
-- **Backend**: [To be determined]
-- **Database**: [To be determined]
+- **Frontend**: React Native with TypeScript
+- **Navigation**: React Navigation
+- **State Management**: React Context API (with potential for Redux Toolkit)
+- **Storage**: AsyncStorage for local data persistence
+- **Icons**: React Native Vector Icons
+- **Development**: Metro bundler, ESLint, Prettier
 
 ## Contributing
 
