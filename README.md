@@ -1,42 +1,41 @@
 
-# Moayo (모아요)
+# Moayo - Personal Finance Tracker
 
-*Collect your financial life, one transaction at a time*
-
-Moayo is a personal finance tracking application that helps you record and categorize your spendings and earnings. The name comes from the Korean word "모아" which means "to collect" or "to gather."
+A React Native/Expo app for tracking personal finances with multi-currency support, recurring transactions, goals, and analytics.
 
 ## Features
 
-### 📊 **Expense Tracking**
-Track your spending across multiple categories:
-- 🏠 **Housing** - Rent, mortgage, utilities, maintenance
-- 🍽️ **Food** - Groceries, dining out, meal delivery
-- 🚗 **Transportation** - Gas, public transit, ride-sharing, car maintenance
-- 🛍️ **Miscellaneous** - Shopping, entertainment, subscriptions, and other expenses
+- 💰 **Multi-currency support** - Track expenses in different currencies
+- 📊 **Spending/Earning goals** - Set goals by categories and timeframes  
+- 🏷️ **Custom categories** - Create your own spending categories
+- 👤 **User accounts** - Secure authentication and data storage
+- 📅 **Calendar view** - See daily spending at a glance
+- ⏰ **Timeline filtering** - View data by day/week/month
+- � **Analytics graphs** - Visualize spending and earning patterns
+- � **Search functionality** - Find transactions by description
+- � **Recurring transactions** - Automate regular income and expenses
 
-### 💰 **Income Management**
-Record and categorize your earnings:
-- 💼 **Income** - Salary, wages, freelance work
-- 🎁 **Bonus** - Performance bonuses, gifts, unexpected income
-- 📈 **Other** - Investment returns, side hustles, miscellaneous income
+## Tech Stack
 
-### 📈 **Financial Insights**
-- View spending patterns by category
-- Track income vs. expenses
-- Monthly and yearly financial summaries
-- Budget planning and monitoring
+- **Frontend**: React Native + Expo + TypeScript
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
+- **UI**: Custom purple-themed design
+- **State Management**: React Hooks
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v14 or higher)
+
+- Node.js (v18 or later)
 - npm or yarn
+- Expo CLI (`npm install -g @expo/cli`)
+- iOS Simulator or Android Emulator (or Expo Go app on your phone)
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Moayo.git
+git clone <your-repo-url>
 cd Moayo
 ```
 
@@ -45,42 +44,52 @@ cd Moayo
 npm install
 ```
 
-3. Start the development server:
+3. Set up Supabase:
+   - Go to [supabase.com](https://supabase.com) and create a new project
+   - Get your project URL and anon key from Settings > API
+   - Create a `.env` file in the root directory:
+   ```env
+   EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. Set up the database:
+   - Go to your Supabase project dashboard
+   - Navigate to SQL Editor
+   - Run the SQL script from `database/schema.sql` to create the tables
+
+5. Start the development server:
 ```bash
 npm start
 ```
 
-## Usage
+6. Open the app:
+   - Scan the QR code with Expo Go (iOS/Android)
+   - Or press `i` for iOS simulator / `a` for Android emulator
 
-1. **Add Expenses**: Record your daily expenses and assign them to appropriate categories
-2. **Log Income**: Track all sources of income including salary, bonuses, and side earnings
-3. **Review Reports**: Analyze your spending patterns and financial health
-4. **Set Budgets**: Create monthly budgets for different expense categories
+## Database Schema
 
-## Technology Stack
+The app uses the following main tables:
+- `user_profiles` - User account information
+- `categories` - Spending/income categories with icons and colors
+- `transactions` - Individual financial transactions
+- `recurring_templates` - Templates for recurring transactions
+- `goals` - Financial goals by category and timeframe
 
-- **Frontend**: [To be determined]
-- **Backend**: [To be determined]
-- **Database**: [To be determined]
+See `database/schema.sql` for the complete schema with relationships and security policies.
+
+## Development Mode
+
+If Supabase is not configured, the app will automatically use mock data for development. This allows you to see the UI and test functionality without setting up a database.
 
 ## Contributing
 
-We welcome contributions! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
-
-## Roadmap
-
-- [ ] Basic expense and income tracking
-- [ ] Category management
-- [ ] Financial reporting and analytics
-- [ ] Budget planning features
-- [ ] Mobile app support
-- [ ] Data export/import functionality
-- [ ] Multi-currency support
-
----
-
-*Start collecting your financial data with Moayo and take control of your money! 💪*
+This project is licensed under the MIT License - see the LICENSE file for details.
