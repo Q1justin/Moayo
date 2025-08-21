@@ -1,6 +1,11 @@
 import React from 'react';
-import HomePage from './src/screens/HomePage';
+import { AuthProvider } from './src/contexts/AuthContext';
+import AppNavigator from './src/screens/AppNavigator';
 
 export default function App(): React.JSX.Element {
-  return <HomePage />;
+  return (
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
+  );
 }

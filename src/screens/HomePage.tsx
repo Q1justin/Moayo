@@ -9,53 +9,47 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchTransactions, TimeFilter } from '../services/transactions';
 import { supabase, TransactionWithCategory } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function HomePage(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const { user, signOut } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<TimeFilter>('week');
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [mockDataMode, setMockDataMode] = useState(false);
 
   // Get current user and fetch transactions
   useEffect(() => {
-    async function initializeData() {
-      try {
-        // Try to get current user to test Supabase connection
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error && error.message.includes('Invalid API key')) {
-          // Supabase not configured properly, use mock data
-          console.log('Supabase not configured, using mock data');
-          setMockDataMode(true);
-          loadMockData();
-          return;
-        }
-        
-        if (user) {
-          setUserId(user.id);
-          await loadTransactions(user.id, selectedFilter);
-        } else {
-          // No user authenticated, but Supabase is working - show mock data for now
-          console.log('No authenticated user found, using mock data');
-          setMockDataMode(true);
-          loadMockData();
-        }
-      } catch (error) {
-        console.error('Error initializing data, falling back to mock data:', error);
-        setMockDataMode(true);
-        loadMockData();
-      }
+    if (user) {
+      loadTransactions(user.id, selectedFilter);
+    } else {
+      // Fallback to mock data if no user (shouldn't happen in this flow, but safe)
+      console.log('No user found, using mock data');
+      setMockDataMode(true);
+      loadMockData();
     }
+  }, [user]);
 
-    initializeData();
-  }, []);
-
-  const [mockDataMode, setMockDataMode] = useState(false);
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: signOut 
+        }
+      ]
+    );
+  };
 
   const loadMockData = () => {
     const mockTransactions: TransactionWithCategory[] = [
@@ -146,10 +140,10 @@ export default function HomePage(): React.JSX.Element {
     if (mockDataMode) {
       // In mock mode, just reload the same data
       loadMockData();
-    } else if (userId) {
-      loadTransactions(userId, selectedFilter);
+    } else if (user) {
+      loadTransactions(user.id, selectedFilter);
     }
-  }, [selectedFilter, userId, mockDataMode]);
+  }, [selectedFilter, user, mockDataMode]);
 
   const loadTransactions = async (userIdParam: string, filter: TimeFilter) => {
     setLoading(true);
@@ -239,7 +233,10 @@ export default function HomePage(): React.JSX.Element {
         borderBottomColor: colors.primaryDark,
       }]}>
         {/* Profile Icon */}
-        <TouchableOpacity style={[styles.profileButton, { backgroundColor: colors.primaryLight }]}>
+        <TouchableOpacity 
+          style={[styles.profileButton, { backgroundColor: colors.primaryLight }]}
+          onPress={handleLogout}
+        >
           <Text style={styles.profileIcon}>👤</Text>
         </TouchableOpacity>
 
