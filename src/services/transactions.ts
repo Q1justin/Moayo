@@ -1,12 +1,4 @@
-import { supabase, Transaction } from '../lib/supabase';
-
-export interface TransactionWithCategory extends Transaction {
-  category: {
-    name: string;
-    icon: string;
-    color: string;
-  };
-}
+import { supabase, TransactionWithCategory, TransactionType, RecurringFrequency } from '../lib/supabase';
 
 export type TimeFilter = 'day' | 'week' | 'month';
 
@@ -45,12 +37,13 @@ export async function fetchTransactions(
         category:categories(
           name,
           icon,
-          color
+          color,
+          transaction_type
         )
       `)
       .eq('user_id', userId)
-      .gte('transaction_date', startDate.toISOString().split('T')[0])
-      .order('transaction_date', { ascending: false })
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -65,7 +58,8 @@ export async function fetchTransactions(
       category: transaction.category || {
         name: 'Uncategorized',
         icon: '❓',
-        color: '#666666'
+        color: '#666666',
+        transaction_type: transaction.type
       }
     })) as TransactionWithCategory[];
 
@@ -81,8 +75,9 @@ export async function createTransaction(
   currency: string,
   description: string,
   categoryId: string,
+  type: TransactionType,
   transactionDate?: string
-): Promise<Transaction | null> {
+): Promise<TransactionWithCategory | null> {
   try {
     const { data, error } = await supabase
       .from('transactions')
@@ -93,11 +88,20 @@ export async function createTransaction(
           currency,
           description,
           category_id: categoryId,
-          transaction_date: transactionDate || new Date().toISOString().split('T')[0],
+          type,
+          date: transactionDate || new Date().toISOString().split('T')[0],
           exchange_rate_to_usd: 1.0, // TODO: Implement real exchange rate fetching
         }
       ])
-      .select()
+      .select(`
+        *,
+        category:categories(
+          name,
+          icon,
+          color,
+          transaction_type
+        )
+      `)
       .single();
 
     if (error) {
@@ -105,7 +109,7 @@ export async function createTransaction(
       throw error;
     }
 
-    return data;
+    return data as TransactionWithCategory;
   } catch (error) {
     console.error('Failed to create transaction:', error);
     return null;

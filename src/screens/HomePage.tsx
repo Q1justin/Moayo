@@ -11,8 +11,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { fetchTransactions, TransactionWithCategory, TimeFilter } from '../services/transactions';
-import { supabase } from '../lib/supabase';
+import { fetchTransactions, TimeFilter } from '../services/transactions';
+import { supabase, TransactionWithCategory } from '../lib/supabase';
 
 export default function HomePage(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -63,9 +63,10 @@ export default function HomePage(): React.JSX.Element {
         id: '1',
         user_id: 'mock-user',
         description: 'Coffee Shop',
-        amount: -4.50,
+        amount: 4.50,
         currency: 'USD',
-        transaction_date: '2025-08-18',
+        type: 'expense',
+        date: '2025-08-18',
         exchange_rate_to_usd: 1.0,
         created_at: '2025-08-18T09:15:00Z',
         updated_at: '2025-08-18T09:15:00Z',
@@ -73,7 +74,8 @@ export default function HomePage(): React.JSX.Element {
         category: {
           name: 'Food',
           icon: '☕',
-          color: '#FF6B6B'
+          color: '#FF6B6B',
+          transaction_type: 'expense'
         }
       },
       {
@@ -82,7 +84,8 @@ export default function HomePage(): React.JSX.Element {
         description: 'Salary',
         amount: 2500.00,
         currency: 'USD',
-        transaction_date: '2025-08-15',
+        type: 'income',
+        date: '2025-08-15',
         exchange_rate_to_usd: 1.0,
         created_at: '2025-08-15T12:00:00Z',
         updated_at: '2025-08-15T12:00:00Z',
@@ -90,16 +93,18 @@ export default function HomePage(): React.JSX.Element {
         category: {
           name: 'Income',
           icon: '💼',
-          color: '#4ECDC4'
+          color: '#4ECDC4',
+          transaction_type: 'income'
         }
       },
       {
         id: '3',
         user_id: 'mock-user',
         description: 'Netflix Subscription',
-        amount: -15.99,
+        amount: 15.99,
         currency: 'USD',
-        transaction_date: '2025-08-12',
+        type: 'expense',
+        date: '2025-08-12',
         exchange_rate_to_usd: 1.0,
         created_at: '2025-08-12T15:20:00Z',
         updated_at: '2025-08-12T15:20:00Z',
@@ -107,16 +112,18 @@ export default function HomePage(): React.JSX.Element {
         category: {
           name: 'Entertainment',
           icon: '🎬',
-          color: '#A78BFA'
+          color: '#A78BFA',
+          transaction_type: 'expense'
         }
       },
       {
         id: '4',
         user_id: 'mock-user',
         description: 'Grocery Store',
-        amount: -85.40,
+        amount: 85.40,
         currency: 'USD',
-        transaction_date: '2025-08-10',
+        type: 'expense',
+        date: '2025-08-10',
         exchange_rate_to_usd: 1.0,
         created_at: '2025-08-10T18:45:00Z',
         updated_at: '2025-08-10T18:45:00Z',
@@ -124,7 +131,8 @@ export default function HomePage(): React.JSX.Element {
         category: {
           name: 'Food',
           icon: '🛒',
-          color: '#FF6B6B'
+          color: '#FF6B6B',
+          transaction_type: 'expense'
         }
       },
     ];
@@ -177,11 +185,11 @@ export default function HomePage(): React.JSX.Element {
   };
 
   const renderTransaction = ({ item }: { item: TransactionWithCategory }) => {
-    const isExpense = item.amount < 0;
+    const isExpense = item.type === 'expense';
     const amountColor = isExpense ? colors.expense : colors.income;
 
-    // Format the date and time from the transaction_date and created_at
-    const transactionDate = new Date(item.transaction_date);
+    // Format the date and time from the date and created_at
+    const transactionDate = new Date(item.date);
     const createdDate = new Date(item.created_at);
     const formattedDate = transactionDate.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -211,7 +219,7 @@ export default function HomePage(): React.JSX.Element {
         </View>
         <View style={styles.transactionRight}>
           <Text style={[styles.transactionAmount, { color: amountColor }]}>
-            {isExpense ? '-' : '+'}${Math.abs(item.amount).toFixed(2)}
+            {isExpense ? '-' : '+'}${item.amount.toFixed(2)}
           </Text>
           <Text style={[styles.transactionCurrency, { color: colors.textTertiary }]}>
             {item.currency}
