@@ -19,8 +19,8 @@ export interface UserProfile {
 
 // Categories table
 export interface Category {
-  id: string;
-  user_id: string;
+  id: string; // UUID
+  user_id: string; // UUID that references auth.users(id)
   name: string;
   icon?: string; // emoji like 🍽️
   color?: string; // hex color like #FF5733

@@ -10,11 +10,13 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchTransactions, TimeFilter } from '../services/transactions';
 import { supabase, TransactionWithCategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import AddTransactionScreen from './AddTransactionScreen';
 
 export default function HomePage(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -23,6 +25,7 @@ export default function HomePage(): React.JSX.Element {
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [mockDataMode, setMockDataMode] = useState(false);
+  const [showAddTransaction, setShowAddTransaction] = useState(false);
 
   // Get current user and fetch transactions
   useEffect(() => {
@@ -297,6 +300,30 @@ export default function HomePage(): React.JSX.Element {
           />
         )}
       </View>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[
+          styles.floatingButton,
+          { backgroundColor: isDarkMode ? '#8B5CF6' : '#7C3AED' }
+        ]}
+        onPress={() => setShowAddTransaction(true)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.floatingButtonText}>+</Text>
+      </TouchableOpacity>
+
+      {/* Add Transaction Modal */}
+      <Modal
+        visible={showAddTransaction}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddTransaction(false)}
+      >
+        <AddTransactionScreen
+          onClose={() => setShowAddTransaction(false)}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -419,5 +446,29 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#7C3AED',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  floatingButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });
