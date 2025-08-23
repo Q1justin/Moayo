@@ -5,10 +5,11 @@ export async function fetchCategories(
   transactionType?: TransactionType
 ): Promise<Category[]> {
   try {
+    // Build query to get both default categories (user_id IS NULL) and user-specific categories
     let query = supabase
       .from('categories')
       .select('*')
-      .eq('user_id', userId)
+      .or(`user_id.is.null,user_id.eq.${userId}`)
       .order('name');
 
     if (transactionType) {
