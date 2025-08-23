@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { createUserProfile } from '../services/userProfiles';
 
 interface AuthContextType {
   user: User | null;
@@ -60,10 +61,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Create user profile when a new user signs up and confirms their email
+        if (event === 'SIGNED_IN' && session?.user) {
+          try {
+            // Check if user profile already exists
+            const { data: existingProfile } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('id', session.user.id)
+              .single();
+
+            // Only create profile if it doesn't exist
+            if (!existingProfile) {
+              await createUserProfile(session.user.id, 'USD');
+            }
+          } catch (profileError) {
+            console.error('Failed to create user profile:', profileError);
+            // Profile creation failed, but user is still authenticated
+          }
+        }
       }
     );
 
@@ -74,14 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Attempting to sign in with:', email);
       
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      console.log('Sign in response error:', error);
       return { error };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -91,15 +109,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      console.log('Attempting to sign up with:', email);
-      console.log('Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-      
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
       
-      console.log('Sign up response error:', error);
       return { error };
     } catch (error) {
       console.error('Sign up error:', error);

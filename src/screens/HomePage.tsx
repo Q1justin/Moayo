@@ -33,7 +33,6 @@ export default function HomePage(): React.JSX.Element {
       loadTransactions(user.id, selectedFilter);
     } else {
       // Fallback to mock data if no user (shouldn't happen in this flow, but safe)
-      console.log('No user found, using mock data');
       setMockDataMode(true);
       loadMockData();
     }
