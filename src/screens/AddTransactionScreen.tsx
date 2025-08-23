@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  TextInput,
+  ScrollView,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
@@ -26,11 +29,38 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
+  
+  // Transaction form fields
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [description, setDescription] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+
+  // Animation values
+  const slideAnim = useRef(new Animated.Value(300)).current; // Start 300px below
+  const fadeAnim = useRef(new Animated.Value(0)).current; // Start transparent
 
   // Load categories when component mounts or transaction type changes
   useEffect(() => {
     loadCategories();
   }, [user, transactionType]);
+
+  // Separate effect for initial animation only
+  useEffect(() => {
+    // Start slide-up animation when component mounts
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []); // Empty dependency array - only run on mount
 
   const loadCategories = async () => {
     if (!user) return;
@@ -55,7 +85,66 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
   const handleCategoryPress = (category: Category) => {
     setSelectedCategory(category);
     console.log('Selected category:', category.name, category.icon, 'Type:', transactionType);
-    // TODO: We'll implement the rest of the transaction form later
+  };
+
+  const resetForm = () => {
+    setAmount('');
+    setDescription('');
+    setIsRecurring(false);
+    // Keep currency as is (user preference)
+  };
+
+  const handleSaveTransaction = () => {
+    if (!selectedCategory || !amount.trim()) {
+      console.log('Missing required fields');
+      return;
+    }
+    
+    const transactionData = {
+      category: selectedCategory,
+      type: transactionType,
+      amount: parseFloat(amount),
+      currency,
+      description: description.trim(),
+      isRecurring,
+    };
+    
+    console.log('Saving transaction:', transactionData);
+    // TODO: Implement actual transaction saving
+    
+    // Slide down animation before closing
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
+
+  const handleClose = () => {
+    // Slide down animation before closing
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
   };
 
   // Purple theme colors (consistent with HomePage)
@@ -109,102 +198,227 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>✕</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Transaction</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Transaction Type Toggle */}
-        <View style={[styles.transactionTypeContainer, { backgroundColor: colors.surfaceVariant }]}>
-          <TouchableOpacity
-            style={[
-              styles.transactionTypeButton,
-              {
-                backgroundColor: transactionType === 'expense' ? colors.primaryDark : 'transparent',
-              }
-            ]}
-            onPress={() => handleTransactionTypeChange('expense')}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.transactionTypeText,
-                {
-                  color: transactionType === 'expense' ? '#ffffff' : colors.text,
-                  fontWeight: transactionType === 'expense' ? '600' : '500',
-                }
-              ]}
-            >
-              Expense
-            </Text>
+      <Animated.View 
+        style={[
+          styles.animatedContainer,
+          {
+            transform: [{ translateY: slideAnim }],
+            opacity: fadeAnim,
+          }
+        ]}
+      >
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.transactionTypeButton,
-              {
-                backgroundColor: transactionType === 'income' ? colors.primaryDark : 'transparent',
-              }
-            ]}
-            onPress={() => handleTransactionTypeChange('income')}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.transactionTypeText,
-                {
-                  color: transactionType === 'income' ? '#ffffff' : colors.text,
-                  fontWeight: transactionType === 'income' ? '600' : '500',
-                }
-              ]}
-            >
-              Income
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Transaction</Text>
+          <View style={styles.placeholder} />
         </View>
-        
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Select Category
-        </Text>
-        
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading categories...
-            </Text>
+
+        {/* Content */}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Transaction Type Toggle */}
+          <View style={[styles.transactionTypeContainer, { backgroundColor: colors.surfaceVariant }]}>
+            <TouchableOpacity
+              style={[
+                styles.transactionTypeButton,
+                {
+                  backgroundColor: transactionType === 'expense' ? colors.primaryDark : 'transparent',
+                }
+              ]}
+              onPress={() => handleTransactionTypeChange('expense')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.transactionTypeText,
+                  {
+                    color: transactionType === 'expense' ? '#ffffff' : colors.text,
+                    fontWeight: transactionType === 'expense' ? '600' : '500',
+                  }
+                ]}
+              >
+                Expense
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.transactionTypeButton,
+                {
+                  backgroundColor: transactionType === 'income' ? colors.primaryDark : 'transparent',
+                }
+              ]}
+              onPress={() => handleTransactionTypeChange('income')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.transactionTypeText,
+                  {
+                    color: transactionType === 'income' ? '#ffffff' : colors.text,
+                    fontWeight: transactionType === 'income' ? '600' : '500',
+                  }
+                ]}
+              >
+                Income
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <FlatList
-            data={categories}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id}
-            numColumns={4}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesGrid}
-          />
-        )}
-        
-        {selectedCategory && (
-          <View style={[styles.selectedCategoryInfo, { backgroundColor: colors.surfaceVariant }]}>
-            <Text style={[styles.selectedCategoryText, { color: colors.text }]}>
-              Selected: {selectedCategory.icon} {selectedCategory.name}
-            </Text>
-          </View>
-        )}
-      </View>
+          
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Select Category
+          </Text>
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Loading categories...
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.categoriesContainer}>
+              <FlatList
+                data={categories}
+                renderItem={renderCategoryItem}
+                keyExtractor={(item) => item.id}
+                numColumns={4}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.categoriesGrid}
+                scrollEnabled={false}
+              />
+              
+              {selectedCategory && (
+                <View style={styles.formSection}>
+                  {/* Selected Category Display */}
+                  <View style={[styles.selectedCategoryInfo, { backgroundColor: colors.surfaceVariant }]}>
+                    <Text style={[styles.selectedCategoryText, { color: colors.text }]}>
+                      {selectedCategory.icon} {selectedCategory.name}
+                    </Text>
+                  </View>
+
+                  {/* Transaction Form */}
+                  <View style={styles.formContainer}>
+                    {/* Amount Input */}
+                    <View style={styles.inputGroup}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>Amount *</Text>
+                      <View style={styles.amountContainer}>
+                        <TextInput
+                          style={[
+                            styles.amountInput,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.border,
+                              color: colors.text,
+                            }
+                          ]}
+                          value={amount}
+                          onChangeText={setAmount}
+                          placeholder="0.00"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="decimal-pad"
+                          autoFocus
+                        />
+                        <TouchableOpacity 
+                          style={[styles.currencyButton, { backgroundColor: colors.surfaceVariant }]}
+                          onPress={() => {
+                            // TODO: Add currency picker
+                            console.log('Currency picker not implemented yet');
+                          }}
+                        >
+                          <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
+                          <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Description Input */}
+                    <View style={styles.inputGroup}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
+                      <TextInput
+                        style={[
+                          styles.descriptionInput,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          }
+                        ]}
+                        value={description}
+                        onChangeText={(text) => {
+                          // Limit to 30 characters
+                          if (text.length <= 30) {
+                            setDescription(text);
+                          }
+                        }}
+                        placeholder="Quick note (optional)"
+                        placeholderTextColor={colors.textTertiary}
+                        maxLength={30}
+                      />
+                      <Text style={[styles.characterCount, { color: colors.textTertiary }]}>
+                        {description.length}/30
+                      </Text>
+                    </View>
+
+                    {/* Recurring Checkbox */}
+                    <TouchableOpacity 
+                      style={styles.checkboxContainer}
+                      onPress={() => setIsRecurring(!isRecurring)}
+                      activeOpacity={0.7}
+                    >
+                      <View 
+                        style={[
+                          styles.checkbox,
+                          {
+                            backgroundColor: isRecurring ? colors.primary : 'transparent',
+                            borderColor: isRecurring ? colors.primary : colors.border,
+                          }
+                        ]}
+                      >
+                        {isRecurring && (
+                          <Text style={styles.checkmark}>✓</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.checkboxLabel, { color: colors.text }]}>
+                        Recurring transaction
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Save Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.saveButton,
+                        {
+                          backgroundColor: colors.primary,
+                          opacity: (!amount.trim()) ? 0.5 : 1,
+                        }
+                      ]}
+                      onPress={handleSaveTransaction}
+                      disabled={!amount.trim()}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  animatedContainer: {
     flex: 1,
   },
   header: {
@@ -239,17 +453,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 15,
   },
   transactionTypeContainer: {
     flexDirection: 'row',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   transactionTypeButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -259,9 +473,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   loadingContainer: {
     flex: 1,
@@ -272,37 +486,135 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
   },
+  categoriesContainer: {
+    flex: 1,
+  },
   categoriesGrid: {
-    paddingBottom: 20,
+    paddingBottom: 10,
+  },
+  formSection: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(167, 139, 250, 0.2)',
   },
   categoryItem: {
     width: '23%',
     aspectRatio: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     marginHorizontal: '1%',
-    padding: 8,
+    padding: 6,
   },
   categoryIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 22,
+    marginBottom: 2,
   },
   categoryName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     textAlign: 'center',
   },
   selectedCategoryInfo: {
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
-    marginTop: 10,
+    marginBottom: 12,
     alignItems: 'center',
   },
   selectedCategoryText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Form styles
+  formContainer: {
+    paddingBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 18,
+  },
+  inputLabel: {
     fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  amountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  amountInput: {
+    flex: 1,
+    height: 56,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  currencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  currencyText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  currencyArrow: {
+    fontSize: 12,
+  },
+  descriptionInput: {
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    height: 48,
+  },
+  characterCount: {
+    fontSize: 12,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    flex: 1,
+  },
+  saveButton: {
+    height: 56,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: '600',
   },
   placeholderText: {
