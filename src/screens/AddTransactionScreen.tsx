@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
-import { Category } from '../lib/supabase';
+import { Category, TransactionType } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AddTransactionScreenProps {
@@ -25,19 +25,22 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
 
-  // Load categories when component mounts
+  // Load categories when component mounts or transaction type changes
   useEffect(() => {
     loadCategories();
-  }, [user]);
+  }, [user, transactionType]);
 
   const loadCategories = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      const fetchedCategories = await fetchCategories(user.id);
+      const fetchedCategories = await fetchCategories(user.id, transactionType);
       setCategories(fetchedCategories);
+      // Reset selected category when switching transaction types
+      setSelectedCategory(null);
     } catch (error) {
       console.error('Failed to load categories:', error);
     } finally {
@@ -45,9 +48,13 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
     }
   };
 
+  const handleTransactionTypeChange = (type: TransactionType) => {
+    setTransactionType(type);
+  };
+
   const handleCategoryPress = (category: Category) => {
     setSelectedCategory(category);
-    console.log('Selected category:', category.name, category.icon);
+    console.log('Selected category:', category.name, category.icon, 'Type:', transactionType);
     // TODO: We'll implement the rest of the transaction form later
   };
 
@@ -63,6 +70,8 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
     text: isDarkMode ? '#ffffff' : '#000000',
     textSecondary: isDarkMode ? '#cccccc' : '#666666',
     textTertiary: isDarkMode ? '#888888' : '#999999',
+    expense: '#FF4757',
+    income: '#2ED573',
   };
 
   const renderCategoryItem = ({ item }: { item: Category }) => {
@@ -111,6 +120,55 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
 
       {/* Content */}
       <View style={styles.content}>
+        {/* Transaction Type Toggle */}
+        <View style={[styles.transactionTypeContainer, { backgroundColor: colors.surfaceVariant }]}>
+          <TouchableOpacity
+            style={[
+              styles.transactionTypeButton,
+              {
+                backgroundColor: transactionType === 'expense' ? colors.primaryDark : 'transparent',
+              }
+            ]}
+            onPress={() => handleTransactionTypeChange('expense')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.transactionTypeText,
+                {
+                  color: transactionType === 'expense' ? '#ffffff' : colors.text,
+                  fontWeight: transactionType === 'expense' ? '600' : '500',
+                }
+              ]}
+            >
+              Expense
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.transactionTypeButton,
+              {
+                backgroundColor: transactionType === 'income' ? colors.primaryDark : 'transparent',
+              }
+            ]}
+            onPress={() => handleTransactionTypeChange('income')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.transactionTypeText,
+                {
+                  color: transactionType === 'income' ? '#ffffff' : colors.text,
+                  fontWeight: transactionType === 'income' ? '600' : '500',
+                }
+              ]}
+            >
+              Income
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Select Category
         </Text>
@@ -182,6 +240,23 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  transactionTypeContainer: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  transactionTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionTypeText: {
+    fontSize: 16,
   },
   sectionTitle: {
     fontSize: 24,
