@@ -313,79 +313,63 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
         {selectedCategory && (
           <View style={[styles.formOverlay, { backgroundColor: colors.background }]}>
             <ScrollView showsVerticalScrollIndicator={false} style={styles.formScrollView}>
-                {/* Selected Category Display */}
-                <View style={[styles.selectedCategoryInfo, { backgroundColor: colors.surfaceVariant }]}>
-                  <Text style={[styles.selectedCategoryText, { color: colors.text }]}>
-                    {selectedCategory.icon} {selectedCategory.name}
-                  </Text>
-                  <TouchableOpacity 
-                    style={[styles.changeButton, { backgroundColor: colors.primary }]}
-                    onPress={() => setSelectedCategory(null)}
-                  >
-                    <Text style={styles.changeButtonText}>Change</Text>
-                  </TouchableOpacity>
-                </View>
-
                 {/* Transaction Form */}
                 <View style={styles.formContainer}>
-                {/* Amount Input */}
+                {/* Amount and Description Row */}
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Amount *</Text>
-                  <View style={styles.amountContainer}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Description & Amount *</Text>
+                  <View style={styles.amountDescriptionRow}>
                     <TextInput
                       style={[
-                        styles.amountInput,
+                        styles.compactDescriptionInput,
                         {
                           backgroundColor: colors.surface,
                           borderColor: colors.border,
                           color: colors.text,
                         }
                       ]}
-                      value={amount}
-                      onChangeText={setAmount}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                      autoFocus
-                    />
-                    <TouchableOpacity 
-                      style={[styles.currencyButton, { backgroundColor: colors.surfaceVariant }]}
-                      onPress={() => {
-                        // TODO: Add currency picker
-                        console.log('Currency picker not implemented yet');
+                      value={description}
+                      onChangeText={(text) => {
+                        // Limit to 30 characters
+                        if (text.length <= 30) {
+                          setDescription(text);
+                        }
                       }}
-                    >
-                      <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
-                      <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
-                    </TouchableOpacity>
+                      placeholder="Quick note (optional)"
+                      placeholderTextColor={colors.textTertiary}
+                      maxLength={30}
+                    />
+                    <View style={styles.amountSection}>
+                      <TextInput
+                        style={[
+                          styles.compactAmountInput,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          }
+                        ]}
+                        value={amount}
+                        onChangeText={setAmount}
+                        placeholder="0.00"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        autoFocus
+                      />
+                      <TouchableOpacity 
+                        style={[styles.compactCurrencyButton, { backgroundColor: colors.surfaceVariant }]}
+                        onPress={() => {
+                          // TODO: Add currency picker
+                          console.log('Currency picker not implemented yet');
+                        }}
+                      >
+                        <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
+                        <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-
-                {/* Description Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
-                  <TextInput
-                    style={[
-                      styles.descriptionInput,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      }
-                    ]}
-                    value={description}
-                    onChangeText={(text) => {
-                      // Limit to 30 characters
-                      if (text.length <= 30) {
-                        setDescription(text);
-                      }
-                    }}
-                    placeholder="Quick note (optional)"
-                    placeholderTextColor={colors.textTertiary}
-                    maxLength={30}
-                  />
                   <Text style={[styles.characterCount, { color: colors.textTertiary }]}>
-                    {description.length}/30
+                    Description: {description.length}/30
                   </Text>
                 </View>
 
@@ -523,7 +507,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: '65%', // Only cover the top part, not the form area
+    bottom: '45%', // Only cover the top part, not the form area
     backgroundColor: 'transparent',
     zIndex: -1, // Put it behind the categories so categories can be clicked
   },
@@ -532,7 +516,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '65%',
+    height: '45%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -568,35 +552,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
-  selectedCategoryInfo: {
-    padding: 20,
-    borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 20,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  selectedCategoryText: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-  },
-  changeButton: {
-    backgroundColor: '#A78BFA',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  changeButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   // Form styles
   formContainer: {
     paddingBottom: 40,
     paddingHorizontal: 4,
+    paddingTop: 20,
   },
   inputGroup: {
     marginBottom: 24,
@@ -606,42 +566,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 10,
   },
-  amountContainer: {
+  amountDescriptionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
-  amountInput: {
-    flex: 1,
-    height: 60,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  currencyButton: {
+  amountSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    borderRadius: 12,
     gap: 8,
+    flex: 1,
+  },
+  compactAmountInput: {
+    flex: 1,
+    height: 50,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  compactCurrencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 4,
+  },
+  compactDescriptionInput: {
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    height: 50,
   },
   currencyText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
   },
   currencyArrow: {
-    fontSize: 14,
-  },
-  descriptionInput: {
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    fontSize: 17,
-    height: 56,
+    fontSize: 12,
   },
   characterCount: {
     fontSize: 12,
