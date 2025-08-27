@@ -84,6 +84,11 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
 
   const handleCategoryPress = (category: Category) => {
     setSelectedCategory(category);
+    // If a category is already selected, don't close the modal - just switch categories
+    // Reset form fields when switching categories to avoid confusion
+    if (selectedCategory && selectedCategory.id !== category.id) {
+      resetForm();
+    }
     console.log('Selected category:', category.name, category.icon, 'Type:', transactionType);
   };
 
@@ -175,7 +180,10 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
             borderColor: isSelected ? colors.primaryDark : colors.border,
           }
         ]}
-        onPress={() => handleCategoryPress(item)}
+        onPress={(e) => {
+          e.stopPropagation();
+          handleCategoryPress(item);
+        }}
         activeOpacity={0.7}
       >
         <Text style={styles.categoryIcon}>{item.icon || '📦'}</Text>
@@ -217,7 +225,15 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity 
+          style={styles.content} 
+          activeOpacity={1}
+          onPress={() => {
+            if (selectedCategory) {
+              setSelectedCategory(null);
+            }
+          }}
+        >
           {/* Transaction Type Toggle */}
           <View style={[styles.transactionTypeContainer, { backgroundColor: colors.surfaceVariant }]}>
             <TouchableOpacity
@@ -279,7 +295,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
               </Text>
             </View>
           ) : (
-            <View style={styles.categoriesContainer}>
+            <TouchableOpacity style={styles.categoriesContainer} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
               <FlatList
                 data={categories}
                 renderItem={renderCategoryItem}
@@ -287,128 +303,137 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
                 numColumns={4}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.categoriesGrid}
-                scrollEnabled={false}
+                scrollEnabled={true}
               />
-              
-              {selectedCategory && (
-                <View style={styles.formSection}>
-                  {/* Selected Category Display */}
-                  <View style={[styles.selectedCategoryInfo, { backgroundColor: colors.surfaceVariant }]}>
-                    <Text style={[styles.selectedCategoryText, { color: colors.text }]}>
-                      {selectedCategory.icon} {selectedCategory.name}
-                    </Text>
-                  </View>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
 
-                  {/* Transaction Form */}
-                  <View style={styles.formContainer}>
-                    {/* Amount Input */}
-                    <View style={styles.inputGroup}>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>Amount *</Text>
-                      <View style={styles.amountContainer}>
-                        <TextInput
-                          style={[
-                            styles.amountInput,
-                            {
-                              backgroundColor: colors.surface,
-                              borderColor: colors.border,
-                              color: colors.text,
-                            }
-                          ]}
-                          value={amount}
-                          onChangeText={setAmount}
-                          placeholder="0.00"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="decimal-pad"
-                          autoFocus
-                        />
-                        <TouchableOpacity 
-                          style={[styles.currencyButton, { backgroundColor: colors.surfaceVariant }]}
-                          onPress={() => {
-                            // TODO: Add currency picker
-                            console.log('Currency picker not implemented yet');
-                          }}
-                        >
-                          <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
-                          <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+        {/* Absolute Form Overlay */}
+        {selectedCategory && (
+          <View style={[styles.formOverlay, { backgroundColor: colors.background }]}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.formScrollView}>
+                {/* Selected Category Display */}
+                <View style={[styles.selectedCategoryInfo, { backgroundColor: colors.surfaceVariant }]}>
+                  <Text style={[styles.selectedCategoryText, { color: colors.text }]}>
+                    {selectedCategory.icon} {selectedCategory.name}
+                  </Text>
+                  <TouchableOpacity 
+                    style={[styles.changeButton, { backgroundColor: colors.primary }]}
+                    onPress={() => setSelectedCategory(null)}
+                  >
+                    <Text style={styles.changeButtonText}>Change</Text>
+                  </TouchableOpacity>
+                </View>
 
-                    {/* Description Input */}
-                    <View style={styles.inputGroup}>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
-                      <TextInput
-                        style={[
-                          styles.descriptionInput,
-                          {
-                            backgroundColor: colors.surface,
-                            borderColor: colors.border,
-                            color: colors.text,
-                          }
-                        ]}
-                        value={description}
-                        onChangeText={(text) => {
-                          // Limit to 30 characters
-                          if (text.length <= 30) {
-                            setDescription(text);
-                          }
-                        }}
-                        placeholder="Quick note (optional)"
-                        placeholderTextColor={colors.textTertiary}
-                        maxLength={30}
-                      />
-                      <Text style={[styles.characterCount, { color: colors.textTertiary }]}>
-                        {description.length}/30
-                      </Text>
-                    </View>
-
-                    {/* Recurring Checkbox */}
-                    <TouchableOpacity 
-                      style={styles.checkboxContainer}
-                      onPress={() => setIsRecurring(!isRecurring)}
-                      activeOpacity={0.7}
-                    >
-                      <View 
-                        style={[
-                          styles.checkbox,
-                          {
-                            backgroundColor: isRecurring ? colors.primary : 'transparent',
-                            borderColor: isRecurring ? colors.primary : colors.border,
-                          }
-                        ]}
-                      >
-                        {isRecurring && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </View>
-                      <Text style={[styles.checkboxLabel, { color: colors.text }]}>
-                        Recurring transaction
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Save Button */}
-                    <TouchableOpacity
+                {/* Transaction Form */}
+                <View style={styles.formContainer}>
+                {/* Amount Input */}
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Amount *</Text>
+                  <View style={styles.amountContainer}>
+                    <TextInput
                       style={[
-                        styles.saveButton,
+                        styles.amountInput,
                         {
-                          backgroundColor: colors.primary,
-                          opacity: (!amount.trim()) ? 0.5 : 1,
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                          color: colors.text,
                         }
                       ]}
-                      onPress={handleSaveTransaction}
-                      disabled={!amount.trim()}
-                      activeOpacity={0.8}
+                      value={amount}
+                      onChangeText={setAmount}
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="decimal-pad"
+                      autoFocus
+                    />
+                    <TouchableOpacity 
+                      style={[styles.currencyButton, { backgroundColor: colors.surfaceVariant }]}
+                      onPress={() => {
+                        // TODO: Add currency picker
+                        console.log('Currency picker not implemented yet');
+                      }}
                     >
-                      <Text style={styles.saveButtonText}>
-                        Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
-                      </Text>
+                      <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
+                      <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              )}
-            </View>
-          )}
-        </ScrollView>
+
+                {/* Description Input */}
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
+                  <TextInput
+                    style={[
+                      styles.descriptionInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      }
+                    ]}
+                    value={description}
+                    onChangeText={(text) => {
+                      // Limit to 30 characters
+                      if (text.length <= 30) {
+                        setDescription(text);
+                      }
+                    }}
+                    placeholder="Quick note (optional)"
+                    placeholderTextColor={colors.textTertiary}
+                    maxLength={30}
+                  />
+                  <Text style={[styles.characterCount, { color: colors.textTertiary }]}>
+                    {description.length}/30
+                  </Text>
+                </View>
+
+                {/* Recurring Checkbox */}
+                <TouchableOpacity 
+                  style={styles.checkboxContainer}
+                  onPress={() => setIsRecurring(!isRecurring)}
+                  activeOpacity={0.7}
+                >
+                  <View 
+                    style={[
+                      styles.checkbox,
+                      {
+                        backgroundColor: isRecurring ? colors.primary : 'transparent',
+                        borderColor: isRecurring ? colors.primary : colors.border,
+                      }
+                    ]}
+                  >
+                    {isRecurring && (
+                      <Text style={styles.checkmark}>✓</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.checkboxLabel, { color: colors.text }]}>
+                    Recurring transaction
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Save Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: (!amount.trim()) ? 0.5 : 1,
+                    }
+                  ]}
+                  onPress={handleSaveTransaction}
+                  disabled={!amount.trim()}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveButtonText}>
+                    Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        )}
       </Animated.View>
     </SafeAreaView>
   );
@@ -490,14 +515,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoriesGrid: {
-    paddingBottom: 10,
+    paddingBottom: 20,
   },
-  formSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(167, 139, 250, 0.2)',
-    minHeight: 400,
+  // Absolute form overlay styles
+  overlayBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: '65%', // Only cover the top part, not the form area
+    backgroundColor: 'transparent',
+    zIndex: -1, // Put it behind the categories so categories can be clicked
+  },
+  formOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  formScrollView: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   categoryItem: {
     width: '23%',
@@ -520,18 +569,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   selectedCategoryInfo: {
-    padding: 16,
+    padding: 20,
     borderRadius: 12,
+    marginTop: 20,
     marginBottom: 20,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   selectedCategoryText: {
     fontSize: 18,
     fontWeight: '600',
+    flex: 1,
+  },
+  changeButton: {
+    backgroundColor: '#A78BFA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  changeButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Form styles
   formContainer: {
-    paddingBottom: 30,
+    paddingBottom: 40,
     paddingHorizontal: 4,
   },
   inputGroup: {
