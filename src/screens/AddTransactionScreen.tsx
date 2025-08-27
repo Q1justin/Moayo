@@ -14,16 +14,17 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
-import { createTransaction } from '../services/transactions';
-import { Category, TransactionType } from '../lib/supabase';
+import { createTransaction, updateTransaction } from '../services/transactions';
+import { Category, TransactionType, TransactionWithCategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AddTransactionScreenProps {
   onClose: () => void;
   onTransactionAdded?: () => void;
+  editingTransaction?: TransactionWithCategory | null;
 }
 
-export default function AddTransactionScreen({ onClose, onTransactionAdded }: AddTransactionScreenProps): React.JSX.Element {
+export default function AddTransactionScreen({ onClose, onTransactionAdded, editingTransaction }: AddTransactionScreenProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -45,6 +46,27 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
   useEffect(() => {
     loadCategories();
   }, [user, transactionType]);
+
+  // Populate form when editing a transaction
+  useEffect(() => {
+    if (editingTransaction) {
+      setAmount(editingTransaction.amount.toString());
+      setCurrency(editingTransaction.currency);
+      setDescription(editingTransaction.description || '');
+      setTransactionType(editingTransaction.type);
+      // The category will be set when categories are loaded
+    }
+  }, [editingTransaction]);
+
+  // Set selected category when categories are loaded and we're editing
+  useEffect(() => {
+    if (editingTransaction && categories.length > 0) {
+      const category = categories.find(cat => cat.id === editingTransaction.category_id);
+      if (category) {
+        setSelectedCategory(category);
+      }
+    }
+  }, [editingTransaction, categories]);
 
   // Separate effect for initial animation only
   useEffect(() => {
@@ -112,17 +134,32 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
     }
     
     try {
-      const transaction = await createTransaction(
-        user.id,
-        parseFloat(amount),
-        currency,
-        description.trim(),
-        selectedCategory.id,
-        transactionType
-      );
+      let transaction;
+      
+      if (editingTransaction) {
+        // Update existing transaction
+        transaction = await updateTransaction(
+          editingTransaction.id,
+          parseFloat(amount),
+          currency,
+          description.trim(),
+          selectedCategory.id,
+          transactionType
+        );
+      } else {
+        // Create new transaction
+        transaction = await createTransaction(
+          user.id,
+          parseFloat(amount),
+          currency,
+          description.trim(),
+          selectedCategory.id,
+          transactionType
+        );
+      }
       
       if (transaction) {
-        console.log('Transaction saved successfully:', transaction);
+        console.log(`Transaction ${editingTransaction ? 'updated' : 'created'} successfully:`, transaction);
         
         // Call the callback if provided
         if (onTransactionAdded) {
@@ -145,11 +182,11 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
           onClose();
         });
       } else {
-        console.error('Failed to save transaction');
+        console.error(`Failed to ${editingTransaction ? 'update' : 'save'} transaction`);
         // TODO: Show error message to user
       }
     } catch (error) {
-      console.error('Error saving transaction:', error);
+      console.error(`Error ${editingTransaction ? 'updating' : 'saving'} transaction:`, error);
       // TODO: Show error message to user
     }
   };
@@ -240,7 +277,9 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Transaction</Text>
+          <Text style={styles.headerTitle}>
+            {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
+          </Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -442,7 +481,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
                   activeOpacity={0.8}
                 >
                   <Text style={styles.saveButtonText}>
-                    Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
+                    {editingTransaction ? 'Update' : 'Save'} {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
                   </Text>
                 </TouchableOpacity>
               </View>

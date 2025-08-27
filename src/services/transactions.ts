@@ -115,3 +115,48 @@ export async function createTransaction(
     return null;
   }
 }
+
+export async function updateTransaction(
+  transactionId: string,
+  amount: number,
+  currency: string,
+  description: string,
+  categoryId: string,
+  type: TransactionType,
+  transactionDate?: string
+): Promise<TransactionWithCategory | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .update({
+        amount,
+        currency,
+        description,
+        category_id: categoryId,
+        type,
+        date: transactionDate || new Date().toISOString().split('T')[0],
+        exchange_rate_to_usd: 1.0, // TODO: Implement real exchange rate fetching
+      })
+      .eq('id', transactionId)
+      .select(`
+        *,
+        category:categories(
+          name,
+          icon,
+          color,
+          transaction_type
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error updating transaction:', error);
+      throw error;
+    }
+
+    return data as TransactionWithCategory;
+  } catch (error) {
+    console.error('Failed to update transaction:', error);
+    return null;
+  }
+}

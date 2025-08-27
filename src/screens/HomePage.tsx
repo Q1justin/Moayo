@@ -26,6 +26,7 @@ export default function HomePage(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [mockDataMode, setMockDataMode] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
 
   // Get current user and fetch transactions
   useEffect(() => {
@@ -198,10 +199,17 @@ export default function HomePage(): React.JSX.Element {
     });
 
     return (
-      <View style={[styles.transactionCard, { 
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-      }]}>
+      <TouchableOpacity 
+        style={[styles.transactionCard, { 
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }]}
+        onPress={() => {
+          setEditingTransaction(item);
+          setShowAddTransaction(true);
+        }}
+        activeOpacity={0.7}
+      >
         <View style={styles.transactionLeft}>
           <Text style={[styles.transactionCategory, { color: colors.text }]}>
             {item.category.icon} {item.category.name}
@@ -221,7 +229,7 @@ export default function HomePage(): React.JSX.Element {
             {item.currency}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -306,7 +314,10 @@ export default function HomePage(): React.JSX.Element {
           styles.floatingButton,
           { backgroundColor: isDarkMode ? '#8B5CF6' : '#7C3AED' }
         ]}
-        onPress={() => setShowAddTransaction(true)}
+        onPress={() => {
+          setEditingTransaction(null); // Clear editing transaction for new transaction
+          setShowAddTransaction(true);
+        }}
         activeOpacity={0.8}
       >
         <Text style={styles.floatingButtonText}>+</Text>
@@ -320,13 +331,17 @@ export default function HomePage(): React.JSX.Element {
         onRequestClose={() => setShowAddTransaction(false)}
       >
         <AddTransactionScreen
-          onClose={() => setShowAddTransaction(false)}
+          onClose={() => {
+            setShowAddTransaction(false);
+            setEditingTransaction(null); // Clear editing transaction when closing
+          }}
           onTransactionAdded={() => {
-            // Refresh transactions when a new transaction is added
+            // Refresh transactions when a new transaction is added or updated
             if (user) {
               loadTransactions(user.id, selectedFilter);
             }
           }}
+          editingTransaction={editingTransaction}
         />
       </Modal>
     </SafeAreaView>
