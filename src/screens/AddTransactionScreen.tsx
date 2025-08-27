@@ -376,7 +376,6 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                 <View style={styles.formContainer}>
                 {/* Amount and Description Row */}
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Description & Amount *</Text>
                   <View style={styles.amountDescriptionRow}>
                     <TextInput
                       style={[
@@ -422,7 +421,6 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                         placeholder="0.00"
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="numeric"
-                        returnKeyType="done"
                         autoFocus={true}
                         selectTextOnFocus={true}
                       />
@@ -586,7 +584,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '45%',
+    height: '30%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -624,12 +622,12 @@ const styles = StyleSheet.create({
   },
   // Form styles
   formContainer: {
-    paddingBottom: 40,
+    paddingBottom: 20,
     paddingHorizontal: 4,
     paddingTop: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 15,
   },
   inputLabel: {
     fontSize: 17,
@@ -687,7 +685,7 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
     gap: 14,
     paddingVertical: 8,
   },
