@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
+import { createTransaction } from '../services/transactions';
 import { Category, TransactionType } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -90,6 +91,11 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
       resetForm();
     }
     console.log('Selected category:', category.name, category.icon, 'Type:', transactionType);
+    
+    // Focus on amount field after a short delay to ensure the modal is rendered
+    setTimeout(() => {
+      // The amount input will auto-focus when the modal appears
+    }, 100);
   };
 
   const resetForm = () => {
@@ -99,39 +105,53 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
     // Keep currency as is (user preference)
   };
 
-  const handleSaveTransaction = () => {
-    if (!selectedCategory || !amount.trim()) {
+  const handleSaveTransaction = async () => {
+    if (!selectedCategory || !amount.trim() || !user) {
       console.log('Missing required fields');
       return;
     }
     
-    const transactionData = {
-      category: selectedCategory,
-      type: transactionType,
-      amount: parseFloat(amount),
-      currency,
-      description: description.trim(),
-      isRecurring,
-    };
-    
-    console.log('Saving transaction:', transactionData);
-    // TODO: Implement actual transaction saving
-    
-    // Slide down animation before closing
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 300,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
+    try {
+      const transaction = await createTransaction(
+        user.id,
+        parseFloat(amount),
+        currency,
+        description.trim(),
+        selectedCategory.id,
+        transactionType
+      );
+      
+      if (transaction) {
+        console.log('Transaction saved successfully:', transaction);
+        
+        // Call the callback if provided
+        if (onTransactionAdded) {
+          onTransactionAdded();
+        }
+        
+        // Slide down animation before closing
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 300,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          onClose();
+        });
+      } else {
+        console.error('Failed to save transaction');
+        // TODO: Show error message to user
+      }
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleClose = () => {
@@ -350,11 +370,22 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded }: Ad
                           }
                         ]}
                         value={amount}
-                        onChangeText={setAmount}
+                        onChangeText={(text) => {
+                          // Only allow numbers and one decimal point
+                          const numericValue = text.replace(/[^0-9.]/g, '');
+                          // Prevent multiple decimal points
+                          const parts = numericValue.split('.');
+                          if (parts.length > 2) {
+                            return;
+                          }
+                          setAmount(numericValue);
+                        }}
                         placeholder="0.00"
                         placeholderTextColor={colors.textTertiary}
-                        keyboardType="decimal-pad"
-                        autoFocus
+                        keyboardType="numeric"
+                        returnKeyType="done"
+                        autoFocus={true}
+                        selectTextOnFocus={true}
                       />
                       <TouchableOpacity 
                         style={[styles.compactCurrencyButton, { backgroundColor: colors.surfaceVariant }]}
