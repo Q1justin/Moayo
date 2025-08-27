@@ -321,6 +321,12 @@ export default function HomePage(): React.JSX.Element {
       >
         <AddTransactionScreen
           onClose={() => setShowAddTransaction(false)}
+          onTransactionAdded={() => {
+            // Refresh transactions when a new transaction is added
+            if (user) {
+              loadTransactions(user.id, selectedFilter);
+            }
+          }}
         />
       </Modal>
     </SafeAreaView>
