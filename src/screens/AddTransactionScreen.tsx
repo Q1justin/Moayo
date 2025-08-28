@@ -393,7 +393,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                           setDescription(text);
                         }
                       }}
-                      placeholder="Quick note (optional)"
+                      placeholder="Description"
                       placeholderTextColor={colors.textTertiary}
                       maxLength={30}
                     />

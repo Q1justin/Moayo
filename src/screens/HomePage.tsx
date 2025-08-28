@@ -8,9 +8,9 @@ import {
   useColorScheme,
   TouchableOpacity,
   FlatList,
+  Modal,
   ActivityIndicator,
   Alert,
-  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchTransactions, TimeFilter } from '../services/transactions';
@@ -27,17 +27,19 @@ export default function HomePage(): React.JSX.Element {
   const [mockDataMode, setMockDataMode] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   // Get current user and fetch transactions
   useEffect(() => {
     if (user) {
-      loadTransactions(user.id, selectedFilter);
+      loadTransactions();
     } else {
       // Fallback to mock data if no user (shouldn't happen in this flow, but safe)
       setMockDataMode(true);
       loadMockData();
     }
-  }, [user]);
+  }, [user, selectedFilter, selectedDate]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -144,19 +146,64 @@ export default function HomePage(): React.JSX.Element {
       // In mock mode, just reload the same data
       loadMockData();
     } else if (user) {
-      loadTransactions(user.id, selectedFilter);
+      loadTransactions();
     }
   }, [selectedFilter, user, mockDataMode]);
 
-  const loadTransactions = async (userIdParam: string, filter: TimeFilter) => {
+    const loadTransactions = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
-      const fetchedTransactions = await fetchTransactions(userIdParam, filter);
+      const fetchedTransactions = await fetchTransactions(user.id, selectedFilter, 20, selectedDate);
       setTransactions(fetchedTransactions);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to get date range display based on filter and selected date
+  const getDateRangeDisplay = () => {
+    switch (selectedFilter) {
+      case 'day':
+        return selectedDate.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      
+      case 'week':
+        // Get the Monday of the week containing selectedDate
+        const weekStart = new Date(selectedDate);
+        const dayOfWeek = weekStart.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+        weekStart.setDate(weekStart.getDate() - daysToMonday);
+        
+        // Get the Sunday of the same week
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        // Format: "Mon 25 - Sun 31"
+        const startStr = weekStart.toLocaleDateString('en-US', { 
+          weekday: 'short', 
+          day: 'numeric' 
+        });
+        const endStr = weekEnd.toLocaleDateString('en-US', { 
+          weekday: 'short', 
+          day: 'numeric' 
+        });
+        return `${startStr} - ${endStr}`;
+      
+      case 'month':
+        return selectedDate.toLocaleDateString('en-US', { 
+          month: 'long', 
+          year: 'numeric' 
+        });
+      
+      default:
+        return 'Filter';
     }
   };
 
@@ -265,7 +312,7 @@ export default function HomePage(): React.JSX.Element {
           }}
         >
           <Text style={[styles.filterText, { color: '#ffffff' }]}>
-            {selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)}
+            {getDateRangeDisplay()}
           </Text>
           <Text style={[styles.dropdownArrow, { color: 'rgba(255, 255, 255, 0.8)' }]}>
             ▼
@@ -273,7 +320,10 @@ export default function HomePage(): React.JSX.Element {
         </TouchableOpacity>
 
         {/* Calendar Icon */}
-        <TouchableOpacity style={[styles.calendarButton, { backgroundColor: colors.primaryLight }]}>
+        <TouchableOpacity 
+          style={[styles.calendarButton, { backgroundColor: colors.primaryLight }]}
+          onPress={() => setShowCalendar(true)}
+        >
           <Text style={styles.calendarIcon}>📅</Text>
         </TouchableOpacity>
       </View>
@@ -338,11 +388,134 @@ export default function HomePage(): React.JSX.Element {
           onTransactionAdded={() => {
             // Refresh transactions when a new transaction is added or updated
             if (user) {
-              loadTransactions(user.id, selectedFilter);
+              loadTransactions();
             }
           }}
           editingTransaction={editingTransaction}
         />
+      </Modal>
+
+      {/* Simple Date Picker Modal */}
+      <Modal
+        visible={showCalendar}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCalendar(false)}
+        >
+          <View style={[styles.datePickerContainer, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Select Date</Text>
+              
+              {/* Month Navigation */}
+              <View style={styles.monthNavigation}>
+                <TouchableOpacity 
+                  style={[styles.monthButton, { backgroundColor: colors.surfaceVariant }]}
+                  onPress={() => {
+                    const newDate = new Date(selectedDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setSelectedDate(newDate);
+                  }}
+                >
+                  <Text style={[styles.monthButtonText, { color: colors.text }]}>◀</Text>
+                </TouchableOpacity>
+                
+                <Text style={[styles.monthTitle, { color: colors.text }]}>
+                  {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </Text>
+                
+                <TouchableOpacity 
+                  style={[styles.monthButton, { backgroundColor: colors.surfaceVariant }]}
+                  onPress={() => {
+                    const newDate = new Date(selectedDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setSelectedDate(newDate);
+                  }}
+                >
+                  <Text style={[styles.monthButtonText, { color: colors.text }]}>▶</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Day Headers */}
+              <View style={styles.dayHeaders}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <Text key={day} style={[styles.dayHeader, { color: colors.textSecondary }]}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Calendar Grid */}
+              <View style={styles.calendarGrid}>
+                {(() => {
+                  const year = selectedDate.getFullYear();
+                  const month = selectedDate.getMonth();
+                  const firstDay = new Date(year, month, 1);
+                  const startDate = new Date(firstDay);
+                  startDate.setDate(startDate.getDate() - firstDay.getDay());
+                  
+                  const days = [];
+                  const today = new Date();
+                  
+                  for (let i = 0; i < 42; i++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    
+                    const isCurrentMonth = currentDate.getMonth() === month;
+                    const isToday = currentDate.toDateString() === today.toDateString();
+                    const isSelected = currentDate.toDateString() === selectedDate.toDateString();
+                    
+                    days.push(
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.calendarDay,
+                          isSelected && { backgroundColor: colors.primary },
+                          isToday && !isSelected && { backgroundColor: colors.primaryLight },
+                        ]}
+                        onPress={() => {
+                          setSelectedDate(new Date(currentDate));
+                          setShowCalendar(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.calendarDayText,
+                            { color: isCurrentMonth ? colors.text : colors.textTertiary },
+                            isSelected && { color: '#ffffff', fontWeight: 'bold' },
+                            isToday && !isSelected && { color: colors.primaryDark, fontWeight: 'bold' },
+                          ]}
+                        >
+                          {currentDate.getDate()}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  return days;
+                })()}
+              </View>
+
+              {/* Today Button */}
+              <TouchableOpacity
+                style={[styles.todayButton, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  setSelectedDate(new Date());
+                  setShowCalendar(false);
+                }}
+              >
+                <Text style={styles.todayButtonText}>Go to Today</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -374,17 +547,18 @@ const styles = StyleSheet.create({
   filterDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    minWidth: 100,
+    maxWidth: 200,
     justifyContent: 'center',
   },
   filterText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    marginRight: 5,
+    marginRight: 4,
+    flexShrink: 1,
   },
   dropdownArrow: {
     fontSize: 12,
@@ -490,5 +664,82 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  // Date Picker Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContainer: {
+    width: '90%',
+    maxWidth: 350,
+    borderRadius: 16,
+    padding: 20,
+  },
+  datePickerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  monthNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  monthButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dayHeaders: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  dayHeader: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    paddingVertical: 6,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  calendarDayText: {
+    fontSize: 14,
+  },
+  todayButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  todayButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

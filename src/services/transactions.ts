@@ -5,29 +5,41 @@ export type TimeFilter = 'day' | 'week' | 'month';
 export async function fetchTransactions(
   userId: string,
   timeFilter: TimeFilter = 'week',
-  limit: number = 20
+  limit: number = 20,
+  selectedDate?: Date
 ): Promise<TransactionWithCategory[]> {
   try {
-    // Calculate the date range based on the time filter
-    const now = new Date();
+    // Calculate the date range based on the time filter and selected date
+    const referenceDate = selectedDate || new Date();
     let startDate: Date;
+    let endDate: Date;
 
     switch (timeFilter) {
       case 'day':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        startDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
         break;
       case 'week':
-        const dayOfWeek = now.getDay();
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - dayOfWeek);
+        // Get Monday of the week containing the selected date
+        const dayOfWeek = referenceDate.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+        startDate = new Date(referenceDate);
+        startDate.setDate(referenceDate.getDate() - daysToMonday);
         startDate.setHours(0, 0, 0, 0);
+        
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 7);
         break;
       case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+        endDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 1);
         break;
       default:
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 7);
+        startDate = new Date(referenceDate);
+        startDate.setDate(referenceDate.getDate() - 7);
+        endDate = new Date(referenceDate);
+        endDate.setDate(referenceDate.getDate() + 1);
     }
 
     const { data, error } = await supabase
@@ -43,6 +55,7 @@ export async function fetchTransactions(
       `)
       .eq('user_id', userId)
       .gte('date', startDate.toISOString().split('T')[0])
+      .lt('date', endDate.toISOString().split('T')[0])
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
