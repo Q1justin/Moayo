@@ -228,18 +228,93 @@ export default function HomePage(): React.JSX.Element {
     income: '#2ED573',
   };
 
+  // Group transactions by date
+  const groupTransactionsByDate = (transactions: TransactionWithCategory[]) => {
+    const grouped: { [key: string]: TransactionWithCategory[] } = {};
+    
+    transactions.forEach(transaction => {
+      const transactionDate = new Date(transaction.date);
+      const dateKey = transactionDate.toDateString(); // This gives us a unique key per day
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(transaction);
+    });
+    
+    return grouped;
+  };
+
+  // Create flattened list with date headers
+  const createFlattenedList = (transactions: TransactionWithCategory[]) => {
+    const grouped = groupTransactionsByDate(transactions);
+    const flattened: Array<{ type: 'header' | 'transaction'; data: any; id: string }> = [];
+    
+    // Sort date groups by date (most recent first)
+    const sortedDates = Object.keys(grouped).sort((a, b) => {
+      return new Date(b).getTime() - new Date(a).getTime();
+    });
+    
+    sortedDates.forEach(dateKey => {
+      const transactionDate = new Date(dateKey);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+      
+      let displayDate;
+      if (transactionDate.toDateString() === today.toDateString()) {
+        displayDate = 'Today';
+      } else if (transactionDate.toDateString() === yesterday.toDateString()) {
+        displayDate = 'Yesterday';
+      } else {
+        displayDate = transactionDate.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      
+      // Add date header
+      flattened.push({
+        type: 'header',
+        data: { date: displayDate, count: grouped[dateKey].length },
+        id: `header-${dateKey}`
+      });
+      
+      // Add transactions for this date
+      grouped[dateKey]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .forEach(transaction => {
+          flattened.push({
+            type: 'transaction',
+            data: transaction,
+            id: transaction.id
+          });
+        });
+    });
+    
+    return flattened;
+  };
+
+  const renderDateHeader = (date: string, count: number) => {
+    return (
+      <View style={[styles.dateHeader, { backgroundColor: colors.surfaceVariant }]}>
+        <Text style={[styles.dateHeaderText, { color: colors.text }]}>
+          {date}
+        </Text>
+        <Text style={[styles.dateHeaderCount, { color: colors.textSecondary }]}>
+          {count} transaction{count !== 1 ? 's' : ''}
+        </Text>
+      </View>
+    );
+  };
+
   const renderTransaction = ({ item }: { item: TransactionWithCategory }) => {
     const isExpense = item.type === 'expense';
     const amountColor = isExpense ? colors.expense : colors.income;
 
-    // Format the date and time from the date and created_at
-    const transactionDate = new Date(item.date);
+    // Format just the time since we have date headers
     const createdDate = new Date(item.created_at);
-    const formattedDate = transactionDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
     const formattedTime = createdDate.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
@@ -265,7 +340,7 @@ export default function HomePage(): React.JSX.Element {
             {item.description}
           </Text>
           <Text style={[styles.transactionDate, { color: colors.textTertiary }]}>
-            {formattedDate} • {formattedTime}
+            {formattedTime}
           </Text>
         </View>
         <View style={styles.transactionRight}>
@@ -279,6 +354,18 @@ export default function HomePage(): React.JSX.Element {
       </TouchableOpacity>
     );
   };
+
+  // Main render function for FlatList items
+  const renderListItem = ({ item }: { item: { type: 'header' | 'transaction'; data: any; id: string } }) => {
+    if (item.type === 'header') {
+      return renderDateHeader(item.data.date, item.data.count);
+    } else {
+      return renderTransaction({ item: item.data });
+    }
+  };
+
+  // Get flattened list for display
+  const flattenedList = createFlattenedList(transactions);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -349,8 +436,8 @@ export default function HomePage(): React.JSX.Element {
           </View>
         ) : (
           <FlatList
-            data={transactions}
-            renderItem={renderTransaction}
+            data={flattenedList}
+            renderItem={renderListItem}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.transactionsList}
@@ -511,7 +598,7 @@ export default function HomePage(): React.JSX.Element {
                   setShowCalendar(false);
                 }}
               >
-                <Text style={styles.todayButtonText}>Go to Today</Text>
+                <Text style={styles.todayButtonText}>Today</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           </View>
@@ -586,12 +673,31 @@ const styles = StyleSheet.create({
   transactionsList: {
     paddingBottom: 20,
   },
+  dateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    marginHorizontal: 20,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dateHeaderCount: {
+    fontSize: 14,
+  },
   transactionCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 8,
+    marginHorizontal: 20,
     borderRadius: 12,
     borderWidth: 1,
   },
