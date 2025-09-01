@@ -102,7 +102,13 @@ export async function createTransaction(
           description,
           category_id: categoryId,
           type,
-          date: transactionDate || new Date().toISOString().split('T')[0],
+          date: transactionDate || (() => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          })(),
           exchange_rate_to_usd: 1.0, // TODO: Implement real exchange rate fetching
         }
       ])
@@ -147,7 +153,13 @@ export async function updateTransaction(
         description,
         category_id: categoryId,
         type,
-        date: transactionDate || new Date().toISOString().split('T')[0],
+        date: transactionDate || (() => {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })(),
         exchange_rate_to_usd: 1.0, // TODO: Implement real exchange rate fetching
       })
       .eq('id', transactionId)

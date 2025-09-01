@@ -245,7 +245,13 @@ export default function HomePage(): React.JSX.Element {
     const grouped: { [key: string]: TransactionWithCategory[] } = {};
     
     transactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.date);
+      // Parse date in local timezone to avoid UTC conversion issues
+      const dateParts = transaction.date.split('-');
+      const transactionDate = new Date(
+        parseInt(dateParts[0]), // year
+        parseInt(dateParts[1]) - 1, // month (0-indexed)
+        parseInt(dateParts[2]) // day
+      );
       const dateKey = transactionDate.toDateString(); // This gives us a unique key per day
       
       if (!grouped[dateKey]) {
@@ -268,23 +274,14 @@ export default function HomePage(): React.JSX.Element {
     });
     
     sortedDates.forEach(dateKey => {
+      // dateKey is already a Date string from toDateString(), so we can use it directly
       const transactionDate = new Date(dateKey);
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
       
-      let displayDate;
-      if (transactionDate.toDateString() === today.toDateString()) {
-        displayDate = 'Today';
-      } else if (transactionDate.toDateString() === yesterday.toDateString()) {
-        displayDate = 'Yesterday';
-      } else {
-        displayDate = transactionDate.toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric'
-        });
-      }
+      const displayDate = transactionDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      });
       
       // Add date header
       flattened.push({
@@ -379,6 +376,27 @@ export default function HomePage(): React.JSX.Element {
   // Get flattened list for display
   const flattenedList = createFlattenedList(transactions);
 
+  // Calculate analytics for current timeframe
+  const calculateAnalytics = () => {
+    const totalSpending = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalEarnings = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const netAmount = totalEarnings - totalSpending;
+    
+    return {
+      totalSpending,
+      totalEarnings,
+      netAmount
+    };
+  };
+
+  const analytics = calculateAnalytics();
+
   // Function to handle date selection and auto-scroll
   const handleDateSelection = (newDate: Date) => {
     setSelectedDate(newDate);
@@ -410,7 +428,7 @@ export default function HomePage(): React.JSX.Element {
         
         // Find closest date
         const dateDiff = Math.abs(headerDate.getTime() - targetDate.getTime());
-        if (dateDiff < closestDateDiff) {
+        if (dateDiff < closestDateDiff) { 
           closestDateDiff = dateDiff;
           closestIndex = index;
         }
@@ -482,6 +500,33 @@ export default function HomePage(): React.JSX.Element {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Recent Transactions
         </Text>
+        
+        {/* Analytics Cards */}
+        <View style={styles.analyticsContainer}>
+          <View style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.analyticsIconContainer, { backgroundColor: colors.income + '20' }]}>
+              <Text style={styles.analyticsIcon}>📈</Text>
+            </View>
+            <View style={styles.analyticsContent}>
+              <Text style={[styles.analyticsLabel, { color: colors.textSecondary }]}>Earnings</Text>
+              <Text style={[styles.analyticsAmount, { color: colors.income }]}>
+                ${analytics.totalEarnings.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.analyticsIconContainer, { backgroundColor: colors.expense + '20' }]}>
+              <Text style={styles.analyticsIcon}>📉</Text>
+            </View>
+            <View style={styles.analyticsContent}>
+              <Text style={[styles.analyticsLabel, { color: colors.textSecondary }]}>Spending</Text>
+              <Text style={[styles.analyticsAmount, { color: colors.expense }]}>
+                ${analytics.totalSpending.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        </View>
         
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -740,6 +785,54 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+  analyticsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  analyticsCard: {
+    flex: 1,
+    backgroundColor: '#EDE9FE',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 80,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  analyticsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  analyticsIcon: {
+    fontSize: 20,
+  },
+  analyticsContent: {
+    flex: 1,
+  },
+  analyticsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  analyticsAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   transactionsList: {
     paddingBottom: 20,
