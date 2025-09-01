@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,10 @@ export default function HomePage(): React.JSX.Element {
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [shouldScrollToDate, setShouldScrollToDate] = useState<Date | null>(null);
+
+  // Ref for FlatList to enable scrolling
+  const flatListRef = useRef<FlatList>(null);
 
   // Get current user and fetch transactions
   useEffect(() => {
@@ -157,6 +161,14 @@ export default function HomePage(): React.JSX.Element {
     try {
       const fetchedTransactions = await fetchTransactions(user.id, selectedFilter, 20, selectedDate);
       setTransactions(fetchedTransactions);
+      
+      // If we should scroll to a specific date after loading, do it
+      if (shouldScrollToDate) {
+        setTimeout(() => {
+          scrollToDate(shouldScrollToDate);
+          setShouldScrollToDate(null);
+        }, 100);
+      }
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {
@@ -367,6 +379,56 @@ export default function HomePage(): React.JSX.Element {
   // Get flattened list for display
   const flattenedList = createFlattenedList(transactions);
 
+  // Function to handle date selection and auto-scroll
+  const handleDateSelection = (newDate: Date) => {
+    setSelectedDate(newDate);
+    setShowCalendar(false);
+    setShouldScrollToDate(newDate);
+  };
+
+  // Function to scroll to a specific date in the transactions list
+  const scrollToDate = (targetDate: Date) => {
+    if (!flatListRef.current || flattenedList.length === 0) return;
+
+    const targetDateString = targetDate.toDateString();
+    
+    // Find the index of the header for the target date or closest date
+    let targetIndex = -1;
+    let closestIndex = -1;
+    let closestDateDiff = Infinity;
+
+    flattenedList.forEach((item, index) => {
+      if (item.type === 'header') {
+        const headerDateString = item.id.replace('header-', '');
+        const headerDate = new Date(headerDateString);
+        
+        // Exact match
+        if (headerDateString === targetDateString) {
+          targetIndex = index;
+          return;
+        }
+        
+        // Find closest date
+        const dateDiff = Math.abs(headerDate.getTime() - targetDate.getTime());
+        if (dateDiff < closestDateDiff) {
+          closestDateDiff = dateDiff;
+          closestIndex = index;
+        }
+      }
+    });
+
+    // Use exact match if found, otherwise use closest
+    const scrollIndex = targetIndex !== -1 ? targetIndex : closestIndex;
+    
+    if (scrollIndex !== -1) {
+      flatListRef.current.scrollToIndex({
+        index: scrollIndex,
+        animated: true,
+        viewPosition: 0.1, // Show the header near the top
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
@@ -399,7 +461,7 @@ export default function HomePage(): React.JSX.Element {
           }}
         >
           <Text style={[styles.filterText, { color: '#ffffff' }]}>
-            {getDateRangeDisplay()}
+            {selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)}
           </Text>
           <Text style={[styles.dropdownArrow, { color: 'rgba(255, 255, 255, 0.8)' }]}>
             ▼
@@ -436,11 +498,22 @@ export default function HomePage(): React.JSX.Element {
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={flattenedList}
             renderItem={renderListItem}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.transactionsList}
+            onScrollToIndexFailed={(info) => {
+              // Fallback: scroll to the closest valid index
+              const wait = new Promise(resolve => setTimeout(resolve, 500));
+              wait.then(() => {
+                flatListRef.current?.scrollToIndex({ 
+                  index: Math.min(info.index, flattenedList.length - 1), 
+                  animated: true 
+                });
+              });
+            }}
           />
         )}
       </View>
@@ -568,8 +641,7 @@ export default function HomePage(): React.JSX.Element {
                           isToday && !isSelected && { backgroundColor: colors.primaryLight },
                         ]}
                         onPress={() => {
-                          setSelectedDate(new Date(currentDate));
-                          setShowCalendar(false);
+                          handleDateSelection(new Date(currentDate));
                         }}
                       >
                         <Text
@@ -594,8 +666,7 @@ export default function HomePage(): React.JSX.Element {
               <TouchableOpacity
                 style={[styles.todayButton, { backgroundColor: colors.primary }]}
                 onPress={() => {
-                  setSelectedDate(new Date());
-                  setShowCalendar(false);
+                  handleDateSelection(new Date());
                 }}
               >
                 <Text style={styles.todayButtonText}>Today</Text>
