@@ -17,6 +17,7 @@ import { fetchTransactions, TimeFilter } from '../services/transactions';
 import { supabase, TransactionWithCategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AddTransactionScreen from './AddTransactionScreen';
+import { triggerRecurringTransactions } from '../utils/recurringTransactions';
 
 export default function HomePage(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -404,6 +405,33 @@ export default function HomePage(): React.JSX.Element {
     setShouldScrollToDate(newDate);
   };
 
+  // Function to manually trigger recurring transactions (for testing)
+  const handleProcessRecurring = async () => {
+    if (!user) return;
+    
+    Alert.alert(
+      'Process Recurring Transactions',
+      'This will check for any recurring transactions that should be created today. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Process', 
+          onPress: async () => {
+            try {
+              await triggerRecurringTransactions(user.id);
+              // Refresh transactions to show any new ones
+              await loadTransactions();
+              Alert.alert('Success', 'Recurring transactions processed successfully!');
+            } catch (error) {
+              console.error('Error processing recurring transactions:', error);
+              Alert.alert('Error', 'Failed to process recurring transactions');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Function to scroll to a specific date in the transactions list
   const scrollToDate = (targetDate: Date) => {
     if (!flatListRef.current || flattenedList.length === 0) return;
@@ -460,6 +488,7 @@ export default function HomePage(): React.JSX.Element {
         <TouchableOpacity 
           style={[styles.profileButton, { backgroundColor: colors.primaryLight }]}
           onPress={handleLogout}
+          onLongPress={handleProcessRecurring}
         >
           <Text style={styles.profileIcon}>👤</Text>
         </TouchableOpacity>
@@ -492,6 +521,14 @@ export default function HomePage(): React.JSX.Element {
           onPress={() => setShowCalendar(true)}
         >
           <Text style={styles.calendarIcon}>📅</Text>
+        </TouchableOpacity>
+
+        {/* Sync/Process Recurring Button */}
+        <TouchableOpacity 
+          style={[styles.syncButton, { backgroundColor: colors.primaryLight }]}
+          onPress={handleProcessRecurring}
+        >
+          <Text style={styles.syncIcon}>🔄</Text>
         </TouchableOpacity>
       </View>
 
@@ -774,6 +811,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   calendarIcon: {
+    fontSize: 20,
+    color: '#ffffff',
+  },
+  syncButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncIcon: {
     fontSize: 20,
     color: '#ffffff',
   },

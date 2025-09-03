@@ -15,7 +15,8 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
 import { createTransaction, updateTransaction } from '../services/transactions';
-import { Category, TransactionType, TransactionWithCategory } from '../lib/supabase';
+import { createRecurringTemplate } from '../services/recurringTemplates';
+import { Category, TransactionType, TransactionWithCategory, RecurringFrequency } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AddTransactionScreenProps {
@@ -37,6 +38,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
   const [currency, setCurrency] = useState('USD');
   const [description, setDescription] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('monthly');
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(300)).current; // Start 300px below
@@ -54,6 +56,19 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
       setCurrency(editingTransaction.currency);
       setDescription(editingTransaction.description || '');
       setTransactionType(editingTransaction.type);
+      
+      // Check if this transaction came from a recurring template
+      if (editingTransaction.recurring_template_id) {
+        setIsRecurring(true);
+        // If we have the recurring template data, set the frequency
+        if (editingTransaction.recurring_template?.frequency) {
+          setRecurringFrequency(editingTransaction.recurring_template.frequency as RecurringFrequency);
+        }
+      } else {
+        setIsRecurring(false);
+        setRecurringFrequency('monthly'); // Reset to default
+      }
+      
       // The category will be set when categories are loaded
     }
   }, [editingTransaction]);
@@ -147,14 +162,45 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           transactionType
         );
       } else {
-        // Create new transaction
+        // If recurring is enabled, create the recurring template first
+        let templateId: string | undefined = undefined;
+        if (isRecurring) {
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          const startDate = `${year}-${month}-${day}`;
+          
+          const recurringTemplate = await createRecurringTemplate(
+            user.id,
+            selectedCategory.id,
+            transactionType,
+            parseFloat(amount),
+            currency,
+            description.trim(),
+            startDate,
+            recurringFrequency
+          );
+          
+          if (recurringTemplate) {
+            templateId = recurringTemplate.id;
+            console.log('Recurring template created successfully:', recurringTemplate);
+          } else {
+            console.error('Failed to create recurring template');
+            // Continue with transaction creation anyway
+          }
+        }
+        
+        // Create new transaction (with template ID if recurring)
         transaction = await createTransaction(
           user.id,
           parseFloat(amount),
           currency,
           description.trim(),
           selectedCategory.id,
-          transactionType
+          transactionType,
+          undefined, // use default date
+          templateId // pass template ID if recurring
         );
       }
       
@@ -465,6 +511,45 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </Text>
                 </TouchableOpacity>
 
+                {/* Recurring Frequency Selector - Only show when recurring is enabled */}
+                {isRecurring && (
+                  <View style={styles.frequencyContainer}>
+                    <Text style={[styles.frequencyLabel, { color: colors.text }]}>
+                      Frequency
+                    </Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.frequencyOptions}
+                    >
+                      {['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'].map((freq) => (
+                        <TouchableOpacity
+                          key={freq}
+                          style={[
+                            styles.frequencyOption,
+                            {
+                              backgroundColor: recurringFrequency === freq ? colors.primary : colors.surface,
+                              borderColor: recurringFrequency === freq ? colors.primary : colors.border,
+                            }
+                          ]}
+                          onPress={() => setRecurringFrequency(freq as RecurringFrequency)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[
+                            styles.frequencyOptionText,
+                            { 
+                              color: recurringFrequency === freq ? '#ffffff' : colors.text,
+                              fontWeight: recurringFrequency === freq ? '600' : '400'
+                            }
+                          ]}>
+                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
                 {/* Save Button */}
                 <TouchableOpacity
                   style={[
@@ -720,6 +805,28 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 18,
+    textAlign: 'center',
+  },
+  frequencyContainer: {
+    marginBottom: 20,
+  },
+  frequencyLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  frequencyOptions: {
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  frequencyOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+  },
+  frequencyOptionText: {
+    fontSize: 14,
     textAlign: 'center',
   },
 });

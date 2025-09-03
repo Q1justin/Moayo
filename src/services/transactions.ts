@@ -51,6 +51,11 @@ export async function fetchTransactions(
           icon,
           color,
           transaction_type
+        ),
+        recurring_template:recurring_templates(
+          frequency,
+          start_date,
+          end_date
         )
       `)
       .eq('user_id', userId)
@@ -89,7 +94,8 @@ export async function createTransaction(
   description: string,
   categoryId: string,
   type: TransactionType,
-  transactionDate?: string
+  transactionDate?: string,
+  recurringTemplateId?: string
 ): Promise<TransactionWithCategory | null> {
   try {
     const { data, error } = await supabase
@@ -109,6 +115,7 @@ export async function createTransaction(
             const day = String(now.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
           })(),
+          recurring_template_id: recurringTemplateId || null,
           exchange_rate_to_usd: 1.0, // TODO: Implement real exchange rate fetching
         }
       ])
@@ -119,6 +126,11 @@ export async function createTransaction(
           icon,
           color,
           transaction_type
+        ),
+        recurring_template:recurring_templates(
+          frequency,
+          start_date,
+          end_date
         )
       `)
       .single();
@@ -170,6 +182,11 @@ export async function updateTransaction(
           icon,
           color,
           transaction_type
+        ),
+        recurring_template:recurring_templates(
+          frequency,
+          start_date,
+          end_date
         )
       `)
       .single();
