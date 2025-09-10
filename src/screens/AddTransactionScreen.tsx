@@ -11,6 +11,7 @@ import {
   TextInput,
   ScrollView,
   Animated,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchCategories } from '../services/categories';
@@ -37,6 +38,8 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [description, setDescription] = useState('');
+  const [transactionDate, setTransactionDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('monthly');
 
@@ -56,6 +59,15 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
       setCurrency(editingTransaction.currency);
       setDescription(editingTransaction.description || '');
       setTransactionType(editingTransaction.type);
+      
+      // Set the transaction date - parse it in local timezone to avoid UTC conversion issues
+      const dateParts = editingTransaction.date.split('-');
+      const transactionDateFromDB = new Date(
+        parseInt(dateParts[0]), // year
+        parseInt(dateParts[1]) - 1, // month (0-indexed)
+        parseInt(dateParts[2]) // day
+      );
+      setTransactionDate(transactionDateFromDB);
       
       // Check if this transaction came from a recurring template
       if (editingTransaction.recurring_template_id) {
@@ -152,6 +164,12 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
       let transaction;
       
       if (editingTransaction) {
+        // Format the selected date for the database
+        const year = transactionDate.getFullYear();
+        const month = String(transactionDate.getMonth() + 1).padStart(2, '0');
+        const day = String(transactionDate.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        
         // Update existing transaction
         transaction = await updateTransaction(
           editingTransaction.id,
@@ -159,7 +177,8 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           currency,
           description.trim(),
           selectedCategory.id,
-          transactionType
+          transactionType,
+          formattedDate
         );
       } else {
         // If recurring is enabled, create the recurring template first
@@ -191,6 +210,12 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           }
         }
         
+        // Format the selected date for the database
+        const year = transactionDate.getFullYear();
+        const month = String(transactionDate.getMonth() + 1).padStart(2, '0');
+        const day = String(transactionDate.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        
         // Create new transaction (with template ID if recurring)
         transaction = await createTransaction(
           user.id,
@@ -199,7 +224,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           description.trim(),
           selectedCategory.id,
           transactionType,
-          undefined, // use default date
+          formattedDate, // use selected date
           templateId // pass template ID if recurring
         );
       }
@@ -487,6 +512,39 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </Text>
                 </View>
 
+                {/* Date Picker */}
+                <View style={styles.inputGroup}>
+                  <TouchableOpacity
+                    style={[
+                      styles.datePickerButton,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      }
+                    ]}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.datePickerContent}>
+                      <Text style={[styles.datePickerIcon, { color: colors.primary }]}>📅</Text>
+                      <View style={styles.datePickerTextContainer}>
+                        <Text style={[styles.datePickerLabel, { color: colors.textSecondary }]}>
+                          Transaction Date
+                        </Text>
+                        <Text style={[styles.datePickerValue, { color: colors.text }]}>
+                          {transactionDate.toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </Text>
+                      </View>
+                      <Text style={[styles.datePickerArrow, { color: colors.textTertiary }]}>▶</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
                 {/* Recurring Checkbox */}
                 <TouchableOpacity 
                   style={styles.checkboxContainer}
@@ -511,44 +569,53 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </Text>
                 </TouchableOpacity>
 
-                {/* Recurring Frequency Selector - Only show when recurring is enabled */}
-                {isRecurring && (
-                  <View style={styles.frequencyContainer}>
-                    <Text style={[styles.frequencyLabel, { color: colors.text }]}>
-                      Frequency
-                    </Text>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.frequencyOptions}
-                    >
-                      {['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'].map((freq) => (
-                        <TouchableOpacity
-                          key={freq}
-                          style={[
-                            styles.frequencyOption,
-                            {
-                              backgroundColor: recurringFrequency === freq ? colors.primary : colors.surface,
-                              borderColor: recurringFrequency === freq ? colors.primary : colors.border,
-                            }
-                          ]}
-                          onPress={() => setRecurringFrequency(freq as RecurringFrequency)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[
-                            styles.frequencyOptionText,
-                            { 
-                              color: recurringFrequency === freq ? '#ffffff' : colors.text,
-                              fontWeight: recurringFrequency === freq ? '600' : '400'
-                            }
-                          ]}>
-                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                {/* Recurring Frequency Selector - Always show but disable when recurring is not enabled */}
+                <View style={styles.frequencyContainer}>
+                  <Text style={[
+                    styles.frequencyLabel, 
+                    { 
+                      color: isRecurring ? colors.text : colors.textTertiary,
+                    }
+                  ]}>
+                    Frequency
+                  </Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.frequencyOptions}
+                  >
+                    {['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'].map((freq) => (
+                      <TouchableOpacity
+                        key={freq}
+                        style={[
+                          styles.frequencyOption,
+                          {
+                            backgroundColor: (isRecurring && recurringFrequency === freq) ? colors.primary : colors.surface,
+                            borderColor: (isRecurring && recurringFrequency === freq) ? colors.primary : colors.border,
+                            opacity: isRecurring ? 1 : 0.4,
+                          }
+                        ]}
+                        onPress={() => {
+                          if (isRecurring) {
+                            setRecurringFrequency(freq as RecurringFrequency);
+                          }
+                        }}
+                        activeOpacity={isRecurring ? 0.7 : 1}
+                        disabled={!isRecurring}
+                      >
+                        <Text style={[
+                          styles.frequencyOptionText,
+                          { 
+                            color: (isRecurring && recurringFrequency === freq) ? '#ffffff' : (isRecurring ? colors.text : colors.textTertiary),
+                            fontWeight: (isRecurring && recurringFrequency === freq) ? '600' : '400'
+                          }
+                        ]}>
+                          {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
 
                 {/* Save Button */}
                 <TouchableOpacity
@@ -572,6 +639,129 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           </View>
         )}
       </Animated.View>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <View style={[styles.datePickerContainer, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Select Transaction Date</Text>
+              
+              {/* Month Navigation */}
+              <View style={styles.monthNavigation}>
+                <TouchableOpacity 
+                  style={[styles.monthButton, { backgroundColor: colors.surfaceVariant }]}
+                  onPress={() => {
+                    const newDate = new Date(transactionDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setTransactionDate(newDate);
+                  }}
+                >
+                  <Text style={[styles.monthButtonText, { color: colors.text }]}>◀</Text>
+                </TouchableOpacity>
+                
+                <Text style={[styles.monthTitle, { color: colors.text }]}>
+                  {transactionDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </Text>
+                
+                <TouchableOpacity 
+                  style={[styles.monthButton, { backgroundColor: colors.surfaceVariant }]}
+                  onPress={() => {
+                    const newDate = new Date(transactionDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setTransactionDate(newDate);
+                  }}
+                >
+                  <Text style={[styles.monthButtonText, { color: colors.text }]}>▶</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Day Headers */}
+              <View style={styles.dayHeaders}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <Text key={day} style={[styles.dayHeader, { color: colors.textSecondary }]}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Calendar Grid */}
+              <View style={styles.calendarGrid}>
+                {(() => {
+                  const year = transactionDate.getFullYear();
+                  const month = transactionDate.getMonth();
+                  const firstDay = new Date(year, month, 1);
+                  const startDate = new Date(firstDay);
+                  startDate.setDate(startDate.getDate() - firstDay.getDay());
+                  
+                  const days = [];
+                  const today = new Date();
+                  
+                  for (let i = 0; i < 42; i++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    
+                    const isCurrentMonth = currentDate.getMonth() === month;
+                    const isToday = currentDate.toDateString() === today.toDateString();
+                    const isSelected = currentDate.toDateString() === transactionDate.toDateString();
+                    
+                    days.push(
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.calendarDay,
+                          isSelected && { backgroundColor: colors.primary },
+                          isToday && !isSelected && { backgroundColor: colors.primaryLight },
+                        ]}
+                        onPress={() => {
+                          setTransactionDate(new Date(currentDate));
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.calendarDayText,
+                            { color: isCurrentMonth ? colors.text : colors.textTertiary },
+                            isSelected && { color: '#ffffff', fontWeight: 'bold' },
+                            isToday && !isSelected && { color: colors.primaryDark, fontWeight: 'bold' },
+                          ]}
+                        >
+                          {currentDate.getDate()}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  return days;
+                })()}
+              </View>
+
+              {/* Today Button */}
+              <TouchableOpacity
+                style={[styles.todayButton, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  setTransactionDate(new Date());
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={styles.todayButtonText}>Today</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -669,7 +859,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '30%',
+    height: '55%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -828,5 +1018,112 @@ const styles = StyleSheet.create({
   frequencyOptionText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  // Date picker styles
+  datePickerButton: {
+    borderWidth: 2,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 15,
+  },
+  datePickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  datePickerIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  datePickerTextContainer: {
+    flex: 1,
+  },
+  datePickerLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  datePickerValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  datePickerArrow: {
+    fontSize: 14,
+  },
+  // Date Picker Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContainer: {
+    width: '90%',
+    maxWidth: 350,
+    borderRadius: 16,
+    padding: 20,
+  },
+  datePickerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  monthNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  monthButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dayHeaders: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  dayHeader: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    paddingVertical: 6,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  calendarDayText: {
+    fontSize: 14,
+  },
+  todayButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  todayButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
