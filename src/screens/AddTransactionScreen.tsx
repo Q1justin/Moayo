@@ -40,6 +40,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
   const [description, setDescription] = useState('');
   const [transactionDate, setTransactionDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('monthly');
 
@@ -152,6 +153,32 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
     setDescription('');
     setIsRecurring(false);
     // Keep currency as is (user preference)
+  };
+
+  // Calculator functions
+  const handleCalculatorInput = (input: string) => {
+    if (input === 'clear') {
+      setAmount('');
+    } else if (input === 'backspace') {
+      setAmount(prev => prev.slice(0, -1));
+    } else if (input === '.') {
+      // Only allow one decimal point
+      if (!amount.includes('.')) {
+        setAmount(prev => prev + input);
+      }
+    } else if (input === 'done') {
+      setShowCalculator(false);
+    } else {
+      // Number input
+      if (amount.includes('.')) {
+        // If there's already a decimal, only allow 2 digits after it
+        const parts = amount.split('.');
+        if (parts[1] && parts[1].length >= 2) {
+          return; // Don't add more digits after 2 decimal places
+        }
+      }
+      setAmount(prev => prev + input);
+    }
   };
 
   const handleSaveTransaction = async () => {
@@ -469,32 +496,26 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                       maxLength={30}
                     />
                     <View style={styles.amountSection}>
-                      <TextInput
+                      <TouchableOpacity
                         style={[
                           styles.compactAmountInput,
                           {
                             backgroundColor: colors.surface,
                             borderColor: colors.border,
-                            color: colors.text,
                           }
                         ]}
-                        value={amount}
-                        onChangeText={(text) => {
-                          // Only allow numbers and one decimal point
-                          const numericValue = text.replace(/[^0-9.]/g, '');
-                          // Prevent multiple decimal points
-                          const parts = numericValue.split('.');
-                          if (parts.length > 2) {
-                            return;
+                        onPress={() => setShowCalculator(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.amountInputText,
+                          { 
+                            color: amount ? colors.text : colors.textTertiary 
                           }
-                          setAmount(numericValue);
-                        }}
-                        placeholder="0.00"
-                        placeholderTextColor={colors.textTertiary}
-                        keyboardType="numeric"
-                        autoFocus={true}
-                        selectTextOnFocus={true}
-                      />
+                        ]}>
+                          {amount || '0.00'}
+                        </Text>
+                      </TouchableOpacity>
                       <TouchableOpacity 
                         style={[styles.compactCurrencyButton, { backgroundColor: colors.surfaceVariant }]}
                         onPress={() => {
@@ -526,14 +547,12 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                     activeOpacity={0.7}
                   >
                     <View style={styles.datePickerContent}>
-                      <Text style={[styles.datePickerIcon, { color: colors.primary }]}>📅</Text>
                       <View style={styles.datePickerTextContainer}>
                         <Text style={[styles.datePickerLabel, { color: colors.textSecondary }]}>
-                          Transaction Date
+                          Date
                         </Text>
                         <Text style={[styles.datePickerValue, { color: colors.text }]}>
                           {transactionDate.toLocaleDateString('en-US', {
-                            weekday: 'short',
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
@@ -762,6 +781,146 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Calculator Modal */}
+      <Modal
+        visible={showCalculator}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCalculator(false)}
+      >
+        <TouchableOpacity 
+          style={styles.calculatorOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCalculator(false)}
+        >
+          <View style={[styles.calculatorContainer, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Calculator Display */}
+              <View style={[styles.calculatorDisplay, { backgroundColor: colors.surfaceVariant }]}>
+                <Text style={[styles.calculatorAmount, { color: colors.text }]}>
+                  ${amount || '0.00'}
+                </Text>
+              </View>
+
+              {/* Calculator Buttons */}
+              <View style={styles.calculatorButtons}>
+                {/* Row 1 */}
+                <View style={styles.calculatorRow}>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
+                    onPress={() => handleCalculatorInput('clear')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>C</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
+                    onPress={() => handleCalculatorInput('backspace')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>⌫</Text>
+                  </TouchableOpacity>
+                  <View style={styles.calculatorButton} />
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, styles.calculatorButtonPrimary, { backgroundColor: colors.primary }]}
+                    onPress={() => handleCalculatorInput('done')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: '#ffffff' }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Row 2 */}
+                <View style={styles.calculatorRow}>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('7')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>7</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('8')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>8</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('9')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>9</Text>
+                  </TouchableOpacity>
+                  <View style={styles.calculatorButton} />
+                </View>
+
+                {/* Row 3 */}
+                <View style={styles.calculatorRow}>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('4')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>4</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('5')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>5</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('6')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>6</Text>
+                  </TouchableOpacity>
+                  <View style={styles.calculatorButton} />
+                </View>
+
+                {/* Row 4 */}
+                <View style={styles.calculatorRow}>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('1')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>1</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('2')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>2</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('3')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>3</Text>
+                  </TouchableOpacity>
+                  <View style={styles.calculatorButton} />
+                </View>
+
+                {/* Row 5 */}
+                <View style={styles.calculatorRow}>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, styles.calculatorButtonWide, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('0')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>0</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleCalculatorInput('.')}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>.</Text>
+                  </TouchableOpacity>
+                  <View style={styles.calculatorButton} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -927,6 +1086,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 18,
     fontWeight: '600',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  amountInputText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   compactCurrencyButton: {
     flexDirection: 'row',
@@ -1023,16 +1188,14 @@ const styles = StyleSheet.create({
   datePickerButton: {
     borderWidth: 2,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     marginBottom: 15,
+    minHeight: 50,
   },
   datePickerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  datePickerIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    justifyContent: 'space-between',
   },
   datePickerTextContainer: {
     flex: 1,
@@ -1124,6 +1287,58 @@ const styles = StyleSheet.create({
   todayButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  // Calculator styles
+  calculatorOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  calculatorContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  calculatorDisplay: {
+    padding: 20,
+    alignItems: 'flex-end',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  calculatorAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  calculatorButtons: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  calculatorRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    gap: 10,
+  },
+  calculatorButton: {
+    flex: 1,
+    height: 60,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  calculatorButtonWide: {
+    flex: 2,
+  },
+  calculatorButtonSecondary: {
+    // Additional styling for secondary buttons like Clear, Backspace
+  },
+  calculatorButtonPrimary: {
+    // Additional styling for primary button like Done
+  },
+  calculatorButtonText: {
+    fontSize: 24,
     fontWeight: '600',
   },
 });
