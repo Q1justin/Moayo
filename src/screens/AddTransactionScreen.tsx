@@ -40,7 +40,6 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
   const [description, setDescription] = useState('');
   const [transactionDate, setTransactionDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('monthly');
 
@@ -141,11 +140,6 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
       resetForm();
     }
     console.log('Selected category:', category.name, category.icon, 'Type:', transactionType);
-    
-    // Focus on amount field after a short delay to ensure the modal is rendered
-    setTimeout(() => {
-      // The amount input will auto-focus when the modal appears
-    }, 100);
   };
 
   const resetForm = () => {
@@ -166,8 +160,6 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
       if (!amount.includes('.')) {
         setAmount(prev => prev + input);
       }
-    } else if (input === 'done') {
-      setShowCalculator(false);
     } else {
       // Number input
       if (amount.includes('.')) {
@@ -264,21 +256,26 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
           onTransactionAdded();
         }
         
-        // Slide down animation before closing
-        Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: 300,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          onClose();
-        });
+        // Close calculator first
+        setSelectedCategory(null);
+        
+        // Small delay then slide down animation before closing
+        setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(slideAnim, {
+              toValue: 300,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            onClose();
+          });
+        }, 100);
       } else {
         console.error(`Failed to ${editingTransaction ? 'update' : 'save'} transaction`);
         // TODO: Show error message to user
@@ -382,15 +379,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
         </View>
 
         {/* Content */}
-        <TouchableOpacity 
-          style={styles.content} 
-          activeOpacity={1}
-          onPress={() => {
-            if (selectedCategory) {
-              setSelectedCategory(null);
-            }
-          }}
-        >
+        <View style={styles.content}>
           {/* Transaction Type Toggle */}
           <View style={[styles.transactionTypeContainer, { backgroundColor: colors.surfaceVariant }]}>
             <TouchableOpacity
@@ -464,199 +453,9 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
               />
             </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
 
-        {/* Absolute Form Overlay */}
-        {selectedCategory && (
-          <View style={[styles.formOverlay, { backgroundColor: colors.background }]}>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.formScrollView}>
-                {/* Transaction Form */}
-                <View style={styles.formContainer}>
-                {/* Amount and Description Row */}
-                <View style={styles.inputGroup}>
-                  <View style={styles.amountDescriptionRow}>
-                    <TextInput
-                      style={[
-                        styles.compactDescriptionInput,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        }
-                      ]}
-                      value={description}
-                      onChangeText={(text) => {
-                        // Limit to 30 characters
-                        if (text.length <= 30) {
-                          setDescription(text);
-                        }
-                      }}
-                      placeholder="Description"
-                      placeholderTextColor={colors.textTertiary}
-                      maxLength={30}
-                    />
-                    <View style={styles.amountSection}>
-                      <TouchableOpacity
-                        style={[
-                          styles.compactAmountInput,
-                          {
-                            backgroundColor: colors.surface,
-                            borderColor: colors.border,
-                          }
-                        ]}
-                        onPress={() => setShowCalculator(true)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.amountInputText,
-                          { 
-                            color: amount ? colors.text : colors.textTertiary 
-                          }
-                        ]}>
-                          {amount || '0.00'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.compactCurrencyButton, { backgroundColor: colors.surfaceVariant }]}
-                        onPress={() => {
-                          // TODO: Add currency picker
-                          console.log('Currency picker not implemented yet');
-                        }}
-                      >
-                        <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
-                        <Text style={[styles.currencyArrow, { color: colors.textSecondary }]}>▼</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <Text style={[styles.characterCount, { color: colors.textTertiary }]}>
-                    Description: {description.length}/30
-                  </Text>
-                </View>
 
-                {/* Date Picker */}
-                <View style={styles.inputGroup}>
-                  <TouchableOpacity
-                    style={[
-                      styles.datePickerButton,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                      }
-                    ]}
-                    onPress={() => setShowDatePicker(true)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.datePickerContent}>
-                      <View style={styles.datePickerTextContainer}>
-                        <Text style={[styles.datePickerLabel, { color: colors.textSecondary }]}>
-                          Date
-                        </Text>
-                        <Text style={[styles.datePickerValue, { color: colors.text }]}>
-                          {transactionDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </Text>
-                      </View>
-                      <Text style={[styles.datePickerArrow, { color: colors.textTertiary }]}>▶</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Recurring Checkbox */}
-                <TouchableOpacity 
-                  style={styles.checkboxContainer}
-                  onPress={() => setIsRecurring(!isRecurring)}
-                  activeOpacity={0.7}
-                >
-                  <View 
-                    style={[
-                      styles.checkbox,
-                      {
-                        backgroundColor: isRecurring ? colors.primary : 'transparent',
-                        borderColor: isRecurring ? colors.primary : colors.border,
-                      }
-                    ]}
-                  >
-                    {isRecurring && (
-                      <Text style={styles.checkmark}>✓</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.checkboxLabel, { color: colors.text }]}>
-                    Recurring transaction
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Recurring Frequency Selector - Always show but disable when recurring is not enabled */}
-                <View style={styles.frequencyContainer}>
-                  <Text style={[
-                    styles.frequencyLabel, 
-                    { 
-                      color: isRecurring ? colors.text : colors.textTertiary,
-                    }
-                  ]}>
-                    Frequency
-                  </Text>
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.frequencyOptions}
-                  >
-                    {['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'].map((freq) => (
-                      <TouchableOpacity
-                        key={freq}
-                        style={[
-                          styles.frequencyOption,
-                          {
-                            backgroundColor: (isRecurring && recurringFrequency === freq) ? colors.primary : colors.surface,
-                            borderColor: (isRecurring && recurringFrequency === freq) ? colors.primary : colors.border,
-                            opacity: isRecurring ? 1 : 0.4,
-                          }
-                        ]}
-                        onPress={() => {
-                          if (isRecurring) {
-                            setRecurringFrequency(freq as RecurringFrequency);
-                          }
-                        }}
-                        activeOpacity={isRecurring ? 0.7 : 1}
-                        disabled={!isRecurring}
-                      >
-                        <Text style={[
-                          styles.frequencyOptionText,
-                          { 
-                            color: (isRecurring && recurringFrequency === freq) ? '#ffffff' : (isRecurring ? colors.text : colors.textTertiary),
-                            fontWeight: (isRecurring && recurringFrequency === freq) ? '600' : '400'
-                          }
-                        ]}>
-                          {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
-                {/* Save Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    {
-                      backgroundColor: colors.primary,
-                      opacity: (!amount.trim()) ? 0.5 : 1,
-                    }
-                  ]}
-                  onPress={handleSaveTransaction}
-                  disabled={!amount.trim()}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {editingTransaction ? 'Update' : 'Save'} {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        )}
       </Animated.View>
 
       {/* Date Picker Modal */}
@@ -782,28 +581,171 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
         </TouchableOpacity>
       </Modal>
 
-      {/* Calculator Modal */}
+      {/* Calculator Modal with Integrated Form */}
       <Modal
-        visible={showCalculator}
+        visible={selectedCategory !== null}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowCalculator(false)}
+        onRequestClose={() => setSelectedCategory(null)}
       >
         <TouchableOpacity 
           style={styles.calculatorOverlay}
           activeOpacity={1}
-          onPress={() => setShowCalculator(false)}
+          onPress={() => setSelectedCategory(null)}
         >
           <View style={[styles.calculatorContainer, { backgroundColor: colors.surface }]}>
             <TouchableOpacity 
               activeOpacity={1} 
               onPress={(e) => e.stopPropagation()}
             >
-              {/* Calculator Display */}
+              {/* Calculator Display with Selected Category */}
               <View style={[styles.calculatorDisplay, { backgroundColor: colors.surfaceVariant }]}>
+                {selectedCategory && (
+                  <View style={styles.calculatorCategoryInfo}>
+                    <Text style={[styles.calculatorCategoryText, { color: colors.text }]}>
+                      {selectedCategory.icon} {selectedCategory.name}
+                    </Text>
+                  </View>
+                )}
                 <Text style={[styles.calculatorAmount, { color: colors.text }]}>
                   ${amount || '0.00'}
                 </Text>
+              </View>
+
+              {/* Form Fields Row */}
+              <View style={[styles.calculatorFormSection, { backgroundColor: colors.background }]}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.formFieldsRow}
+                >
+                  {/* Description Field */}
+                  <View style={styles.formFieldContainer}>
+                    <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Description</Text>
+                    <TextInput
+                      style={[
+                        styles.formFieldInput,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        }
+                      ]}
+                      value={description}
+                      onChangeText={(text) => {
+                        if (text.length <= 30) {
+                          setDescription(text);
+                        }
+                      }}
+                      placeholder="Enter description"
+                      placeholderTextColor={colors.textTertiary}
+                      maxLength={30}
+                    />
+                  </View>
+
+                  {/* Date Field */}
+                  <TouchableOpacity 
+                    style={styles.formFieldContainer}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Date</Text>
+                    <View style={[
+                      styles.formFieldInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        justifyContent: 'center',
+                      }
+                    ]}>
+                      <Text style={[styles.formFieldText, { color: colors.text }]}>
+                        {transactionDate.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Currency Field */}
+                  <TouchableOpacity 
+                    style={styles.formFieldContainer}
+                    onPress={() => {
+                      // TODO: Add currency picker
+                      console.log('Currency picker not implemented yet');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Currency</Text>
+                    <View style={[
+                      styles.formFieldInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }
+                    ]}>
+                      <Text style={[styles.formFieldText, { color: colors.text }]}>{currency}</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Recurring Toggle */}
+                  <TouchableOpacity 
+                    style={styles.formFieldContainer}
+                    onPress={() => setIsRecurring(!isRecurring)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Recurring</Text>
+                    <View style={[
+                      styles.formFieldInput,
+                      {
+                        backgroundColor: isRecurring ? colors.primary : colors.surface,
+                        borderColor: isRecurring ? colors.primary : colors.border,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.formFieldText, 
+                        { color: isRecurring ? '#ffffff' : colors.text }
+                      ]}>
+                        {isRecurring ? '✓' : '○'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Frequency Field - only show if recurring is enabled */}
+                  {isRecurring && (
+                    <TouchableOpacity 
+                      style={styles.formFieldContainer}
+                      onPress={() => {
+                        // Cycle through frequencies
+                        const frequencies: RecurringFrequency[] = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'];
+                        const currentIndex = frequencies.indexOf(recurringFrequency);
+                        const nextIndex = (currentIndex + 1) % frequencies.length;
+                        setRecurringFrequency(frequencies[nextIndex]);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Frequency</Text>
+                      <View style={[
+                        styles.formFieldInput,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          minWidth: 100,
+                        }
+                      ]}>
+                        <Text style={[styles.formFieldText, { color: colors.text, fontSize: 12 }]}>
+                          {recurringFrequency.charAt(0).toUpperCase() + recurringFrequency.slice(1)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
               </View>
 
               {/* Calculator Buttons */}
@@ -825,9 +767,10 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   <View style={styles.calculatorButton} />
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonPrimary, { backgroundColor: colors.primary }]}
-                    onPress={() => handleCalculatorInput('done')}
+                    onPress={handleSaveTransaction}
+                    disabled={!amount.trim()}
                   >
-                    <Text style={[styles.calculatorButtonText, { color: '#ffffff' }]}>Done</Text>
+                    <Text style={[styles.calculatorButtonText, { color: '#ffffff' }]}>Save</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1003,37 +946,6 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     paddingBottom: 20,
   },
-  // Absolute form overlay styles
-  overlayBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: '45%', // Only cover the top part, not the form area
-    backgroundColor: 'transparent',
-    zIndex: -1, // Put it behind the categories so categories can be clicked
-  },
-  formOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  formScrollView: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   categoryItem: {
     width: '23%',
     aspectRatio: 1,
@@ -1052,136 +964,6 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 10,
     fontWeight: '500',
-    textAlign: 'center',
-  },
-  // Form styles
-  formContainer: {
-    paddingBottom: 20,
-    paddingHorizontal: 4,
-    paddingTop: 20,
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  amountDescriptionRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  amountSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  compactAmountInput: {
-    flex: 1,
-    height: 50,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  amountInputText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  compactCurrencyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 4,
-  },
-  compactDescriptionInput: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    height: 50,
-  },
-  currencyText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  currencyArrow: {
-    fontSize: 12,
-  },
-  characterCount: {
-    fontSize: 12,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 14,
-    paddingVertical: 8,
-  },
-  checkbox: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  checkboxLabel: {
-    fontSize: 17,
-    flex: 1,
-  },
-  saveButton: {
-    height: 64,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 19,
-    fontWeight: '600',
-  },
-  placeholderText: {
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  frequencyContainer: {
-    marginBottom: 20,
-  },
-  frequencyLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  frequencyOptions: {
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  frequencyOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-  },
-  frequencyOptionText: {
-    fontSize: 14,
     textAlign: 'center',
   },
   // Date picker styles
@@ -1340,5 +1122,46 @@ const styles = StyleSheet.create({
   calculatorButtonText: {
     fontSize: 24,
     fontWeight: '600',
+  },
+  // Calculator form integration styles
+  calculatorCategoryInfo: {
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  calculatorCategoryText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  calculatorFormSection: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  formFieldsRow: {
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  formFieldContainer: {
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  formFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  formFieldInput: {
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 80,
+  },
+  formFieldText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
