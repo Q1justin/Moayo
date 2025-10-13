@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { fetchTransactions, TimeFilter } from '../services/transactions';
-import { supabase, TransactionWithCategory } from '../lib/supabase';
+import { TransactionWithCategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AddTransactionScreen from './AddTransactionScreen';
 import { triggerRecurringTransactions } from '../utils/recurringTransactions';
