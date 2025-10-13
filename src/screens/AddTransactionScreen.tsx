@@ -26,6 +26,8 @@ interface AddTransactionScreenProps {
   editingTransaction?: TransactionWithCategory | null;
 }
 
+// TODO: Implement caching on categories
+
 export default function AddTransactionScreen({ onClose, onTransactionAdded, editingTransaction }: AddTransactionScreenProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const { user } = useAuth();
@@ -614,35 +616,37 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
 
               {/* Form Fields Row */}
               <View style={[styles.calculatorFormSection, { backgroundColor: colors.background }]}>
+                {/* Description - full width multiline, moved below the amount display */}
+                <View style={styles.descriptionContainer}>
+                  <TextInput
+                    style={[
+                      styles.descriptionInput,
+                      {
+                        backgroundColor: colors.background,
+                        borderWidth: 0,
+                        color: colors.text,
+                      }
+                    ]}
+                    value={description}
+                    onChangeText={(text) => {
+                      if (text.length <= 100) {
+                        setDescription(text);
+                      }
+                    }}
+                    placeholder="Enter description"
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    numberOfLines={2}
+                    textAlignVertical="top"
+                    maxLength={100}
+                  />
+                </View>
+
                 <ScrollView 
                   horizontal 
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.formFieldsRow}
                 >
-                  {/* Description Field */}
-                  <View style={styles.formFieldContainer}>
-                    <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Description</Text>
-                    <TextInput
-                      style={[
-                        styles.formFieldInput,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        }
-                      ]}
-                      value={description}
-                      onChangeText={(text) => {
-                        if (text.length <= 30) {
-                          setDescription(text);
-                        }
-                      }}
-                      placeholder="Enter description"
-                      placeholderTextColor={colors.textTertiary}
-                      maxLength={30}
-                    />
-                  </View>
-
                   {/* Date Field */}
                   <TouchableOpacity 
                     style={styles.formFieldContainer}
@@ -651,14 +655,14 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Date</Text>
                     <View style={[
-                      styles.formFieldInput,
+                      styles.formFieldInputNoBorder,
                       {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
                         justifyContent: 'center',
                       }
                     ]}>
-                      <Text style={[styles.formFieldText, { color: colors.text }]}>
+                      <Text style={[styles.formFieldText, { color: colors.text }]}> 
                         {transactionDate.toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric'
@@ -678,7 +682,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Currency</Text>
                     <View style={[
-                      styles.formFieldInput,
+                      styles.formFieldInputNoBorder,
                       {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
@@ -698,7 +702,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Recurring</Text>
                     <View style={[
-                      styles.formFieldInput,
+                      styles.formFieldInputNoBorder,
                       {
                         backgroundColor: isRecurring ? colors.primary : colors.surface,
                         borderColor: isRecurring ? colors.primary : colors.border,
@@ -730,7 +734,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                     >
                       <Text style={[styles.formFieldLabel, { color: colors.textSecondary }]}>Frequency</Text>
                       <View style={[
-                        styles.formFieldInput,
+                        styles.formFieldInputNoBorder,
                         {
                           backgroundColor: colors.surface,
                           borderColor: colors.border,
@@ -739,7 +743,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                           minWidth: 100,
                         }
                       ]}>
-                        <Text style={[styles.formFieldText, { color: colors.text, fontSize: 12 }]}>
+                        <Text style={[styles.formFieldText, { color: colors.text, fontSize: 12 }]}> 
                           {recurringFrequency.charAt(0).toUpperCase() + recurringFrequency.slice(1)}
                         </Text>
                       </View>
@@ -750,7 +754,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
 
               {/* Calculator Buttons */}
               <View style={styles.calculatorButtons}>
-                {/* Row 1 */}
+                {/* Row 1: Clear, Backspace, Save */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
@@ -758,13 +762,14 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>C</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
                     onPress={() => handleCalculatorInput('backspace')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>⌫</Text>
                   </TouchableOpacity>
-                  <View style={styles.calculatorButton} />
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonPrimary, { backgroundColor: colors.primary }]}
                     onPress={handleSaveTransaction}
@@ -774,7 +779,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </TouchableOpacity>
                 </View>
 
-                {/* Row 2 */}
+                {/* Row 2: 7 8 9 */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
@@ -782,22 +787,23 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>7</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('8')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>8</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('9')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>9</Text>
                   </TouchableOpacity>
-                  <View style={styles.calculatorButton} />
                 </View>
 
-                {/* Row 3 */}
+                {/* Row 3: 4 5 6 */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
@@ -805,22 +811,23 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>4</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('5')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>5</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('6')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>6</Text>
                   </TouchableOpacity>
-                  <View style={styles.calculatorButton} />
                 </View>
 
-                {/* Row 4 */}
+                {/* Row 4: 1 2 3 */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
@@ -828,22 +835,23 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>1</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('2')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>2</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('3')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>3</Text>
                   </TouchableOpacity>
-                  <View style={styles.calculatorButton} />
                 </View>
 
-                {/* Row 5 */}
+                {/* Row 5: 0 (wide) , . , spacer */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonWide, { backgroundColor: colors.background }]}
@@ -851,13 +859,15 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>0</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('.')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>.</Text>
                   </TouchableOpacity>
-                  <View style={styles.calculatorButton} />
+
+                  <View style={styles.calculatorButtonEmpty} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -1110,6 +1120,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.1)',
   },
+  calculatorButtonEmpty: {
+    flex: 1,
+    height: 60,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
   calculatorButtonWide: {
     flex: 2,
   },
@@ -1139,12 +1158,20 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(0, 0, 0, 0.1)',
   },
   formFieldsRow: {
-    gap: 12,
-    paddingHorizontal: 4,
+    gap: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
   },
   formFieldContainer: {
-    minWidth: 100,
+    minWidth: 120,
     alignItems: 'center',
+  },
+  formFieldInputNoBorder: {
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 0,
+    minWidth: 80,
   },
   formFieldLabel: {
     fontSize: 12,
@@ -1163,5 +1190,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  // Description specific styles
+  descriptionContainer: {
+    width: '100%',
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  descriptionInput: {
+    width: '100%',
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 0,
+    fontSize: 16,
+    textAlign: 'right',
+    textAlignVertical: 'top',
   },
 });

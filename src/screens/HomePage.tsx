@@ -19,6 +19,9 @@ import { useAuth } from '../contexts/AuthContext';
 import AddTransactionScreen from './AddTransactionScreen';
 import { triggerRecurringTransactions } from '../utils/recurringTransactions';
 
+// TODO: Consider implementing caching on data. So we might need a month worth data at once?
+// Enable deleting transaction
+
 export default function HomePage(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const { user, signOut } = useAuth();
