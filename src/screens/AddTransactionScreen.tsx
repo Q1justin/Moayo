@@ -754,7 +754,7 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
 
               {/* Calculator Buttons */}
               <View style={styles.calculatorButtons}>
-                {/* Row 1: Clear, Backspace, Save */}
+                {/* Row 1: Clear, Backspace, Close */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
                     style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
@@ -771,11 +771,10 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={[styles.calculatorButton, styles.calculatorButtonPrimary, { backgroundColor: colors.primary }]}
-                    onPress={handleSaveTransaction}
-                    disabled={!amount.trim()}
+                    style={[styles.calculatorButton, styles.calculatorButtonSecondary, { backgroundColor: colors.surfaceVariant }]}
+                    onPress={() => setSelectedCategory(null)}
                   >
-                    <Text style={[styles.calculatorButtonText, { color: '#ffffff' }]}>Save</Text>
+                    <Text style={[styles.calculatorButtonText, { color: colors.text }]}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -851,10 +850,10 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                   </TouchableOpacity>
                 </View>
 
-                {/* Row 5: 0 (wide) , . , spacer */}
+                {/* Row 5: 0 , . , spacer */}
                 <View style={styles.calculatorRow}>
                   <TouchableOpacity 
-                    style={[styles.calculatorButton, styles.calculatorButtonWide, { backgroundColor: colors.background }]}
+                    style={[styles.calculatorButton, { backgroundColor: colors.background }]}
                     onPress={() => handleCalculatorInput('0')}
                   >
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>0</Text>
@@ -867,7 +866,13 @@ export default function AddTransactionScreen({ onClose, onTransactionAdded, edit
                     <Text style={[styles.calculatorButtonText, { color: colors.text }]}>.</Text>
                   </TouchableOpacity>
 
-                  <View style={styles.calculatorButtonEmpty} />
+                  <TouchableOpacity
+                    style={[styles.calculatorButton, styles.calculatorButtonPrimary, { backgroundColor: colors.primary }]}
+                    onPress={handleSaveTransaction}
+                    disabled={!amount.trim()}
+                  >
+                    <Text style={[styles.calculatorButtonText, { color: '#ffffff' }]}>Save</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1109,7 +1114,7 @@ const styles = StyleSheet.create({
   calculatorRow: {
     flexDirection: 'row',
     marginBottom: 10,
-    gap: 10,
+    justifyContent: 'space-between',
   },
   calculatorButton: {
     flex: 1,
@@ -1119,6 +1124,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.1)',
+    marginHorizontal: 4,
   },
   calculatorButtonEmpty: {
     flex: 1,
