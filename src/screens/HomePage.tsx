@@ -17,6 +17,7 @@ import { fetchTransactions, TimeFilter } from '../services/transactions';
 import { TransactionWithCategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AddTransactionScreen from './AddTransactionScreen';
+import ReportPage from './ReportPage';
 import { triggerRecurringTransactions } from '../utils/recurringTransactions';
 
 // TODO: Consider implementing caching on data. So we might need a month worth data at once?
@@ -30,6 +31,7 @@ export default function HomePage(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [mockDataMode, setMockDataMode] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [showReport, setShowReport] = useState<null | 'earnings' | 'spending'>(null);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -543,19 +545,17 @@ export default function HomePage(): React.JSX.Element {
         
         {/* Analytics Cards */}
         <View style={styles.analyticsContainer}>
-          <View style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setShowReport('earnings')} activeOpacity={0.8}>
             <View style={[styles.analyticsIconContainer, { backgroundColor: colors.income + '20' }]}>
               <Text style={styles.analyticsIcon}>📈</Text>
             </View>
             <View style={styles.analyticsContent}>
               <Text style={[styles.analyticsLabel, { color: colors.textSecondary }]}>Earnings</Text>
-              <Text style={[styles.analyticsAmount, { color: colors.income }]}>
-                ${analytics.totalEarnings.toFixed(2)}
-              </Text>
+              <Text style={[styles.analyticsAmount, { color: colors.income }]}>${analytics.totalEarnings.toFixed(2)}</Text>
             </View>
-          </View>
-          
-          <View style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.analyticsCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setShowReport('spending')} activeOpacity={0.8}>
             <View style={[styles.analyticsIconContainer, { backgroundColor: colors.expense + '20' }]}>
               <Text style={styles.analyticsIcon}>📉</Text>
             </View>
@@ -565,7 +565,7 @@ export default function HomePage(): React.JSX.Element {
                 ${analytics.totalSpending.toFixed(2)}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
         
         {loading ? (
@@ -638,6 +638,22 @@ export default function HomePage(): React.JSX.Element {
           }}
           editingTransaction={editingTransaction}
         />
+      </Modal>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReport !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReport(null)}
+      >
+        {showReport && (
+          <ReportPage
+            type={showReport}
+            transactions={transactions}
+            onClose={() => setShowReport(null)}
+          />
+        )}
       </Modal>
 
       {/* Simple Date Picker Modal */}
