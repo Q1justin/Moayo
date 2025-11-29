@@ -1,4 +1,8 @@
 {
-  "name": "Moayo",
-  "slug": "Moayo"
+  "expo": {
+    "name": "Moayo",
+    "slug": "Moayo",
+    "userInterfaceStyle": "light"
+  }
 }
+
